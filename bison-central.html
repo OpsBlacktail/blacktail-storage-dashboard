@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bison Central Storage Operations Dashboard | Blacktail Companies</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+<style>
+:root {
+    --bg: #1e1e1e; --card: #2a2a2a; --card-border: #333;
+    --text: #e0dcd8; --muted: #9a9590; --heading: #e0dcd8;
+    --blue: #5b8fb9; --gold: #c9a96e; --coral: #c25b56;
+    --green: #6bab73; --yellow: #d4a94e; --red: #c25b56;
+    --gap: 16px; --radius: 8px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: 'Segoe UI','Helvetica Neue',sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
+.container { max-width:1200px; margin:0 auto; padding:24px; }
+.header { margin-bottom:28px; }
+.header .company { font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--gold); margin-bottom:4px; }
+.header h1 { font-size:28px; font-weight:700; color:var(--heading); margin-bottom:4px; }
+.header .meta { font-size:13px; color:var(--muted); }
+.tabs { display:flex; gap:0; margin-bottom:24px; border-bottom:1px solid var(--card-border); }
+.tab { padding:10px 20px; cursor:pointer; font-size:14px; font-weight:500; color:var(--muted); background:none; border:none; border-bottom:2px solid transparent; transition:all .2s; }
+.tab.active { color:var(--gold); border-bottom-color:var(--gold); }
+.tab:hover { color:var(--text); }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+.kpi-row { display:grid; grid-template-columns:repeat(4,1fr); gap:var(--gap); margin-bottom:24px; }
+.kpi { background:var(--card); border:1px solid var(--card-border); border-radius:var(--radius); padding:20px 24px; }
+.kpi-label { font-size:11px; text-transform:uppercase; letter-spacing:1.2px; color:var(--muted); margin-bottom:6px; font-weight:600; }
+.kpi-value { font-size:28px; font-weight:800; line-height:1.2; }
+.kpi-sub { font-size:12px; color:var(--muted); margin-top:4px; }
+.kpi-value.blue { color:var(--blue); }
+.kpi-value.gold { color:var(--gold); }
+.kpi-value.coral { color:var(--coral); }
+.kpi-value.green { color:var(--green); }
+.kpi-value.red { color:var(--red); }
+.kpi-value.white { color:var(--heading); }
+.card { background:var(--card); border:1px solid var(--card-border); border-radius:var(--radius); padding:24px; margin-bottom:var(--gap); }
+.card h3 { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--heading); margin-bottom:16px; }
+.card-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:var(--gap); margin-bottom:var(--gap); }
+.card-grid-3 { display:grid; grid-template-columns:2fr 1fr; gap:var(--gap); margin-bottom:var(--gap); }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+thead th { text-align:left; padding:10px 14px; border-bottom:1px solid var(--card-border); color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.5px; }
+tbody td { padding:10px 14px; border-bottom:1px solid rgba(51,51,51,.5); }
+tbody tr:last-child td { border-bottom:none; }
+tbody tr:hover { background:rgba(255,255,255,.03); }
+td.num { text-align:right; font-variant-numeric:tabular-nums; }
+.dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:8px; vertical-align:middle; }
+.dot-blue { background:var(--blue); }
+.dot-gold { background:var(--gold); }
+.dot-coral { background:var(--coral); }
+.dot-green { background:var(--green); }
+.dot-red { background:var(--red); }
+.badge { display:inline-block; padding:2px 10px; border-radius:12px; font-size:11px; font-weight:600; }
+.badge-green { background:rgba(107,171,115,.15); color:var(--green); }
+.badge-gold { background:rgba(201,169,110,.15); color:var(--gold); }
+.badge-red { background:rgba(194,91,86,.15); color:var(--coral); }
+.chart-wrap { position:relative; height:280px; }
+.insight-card { background:var(--card); border:1px solid var(--card-border); border-radius:var(--radius); padding:28px; margin-bottom:var(--gap); }
+.insight-card h2 { font-size:18px; color:var(--gold); margin-bottom:16px; }
+.insight-card h3 { font-size:15px; color:var(--heading); margin-bottom:8px; text-transform:none; letter-spacing:0; font-weight:700; }
+.insight-card p { color:var(--muted); font-size:14px; line-height:1.7; margin-bottom:16px; }
+.impl-grid { display:grid; grid-template-columns:1fr 1fr; gap:var(--gap); margin-top:16px; }
+.impl-box { background:rgba(42,42,42,.8); border:1px solid var(--card-border); border-radius:var(--radius); padding:20px; }
+.impl-box h4 { font-size:12px; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px; font-weight:700; }
+.impl-box.revenue h4 { color:var(--green); }
+.impl-box.marketing h4 { color:var(--gold); }
+.impl-box.capex h4 { color:var(--coral); }
+.impl-box.data h4 { color:var(--blue); }
+.impl-box ul { padding-left:18px; color:var(--muted); font-size:13px; line-height:1.8; }
+.impl-box li { margin-bottom:4px; }
+footer { text-align:center; padding:20px; color:var(--muted); font-size:11px; margin-top:20px; letter-spacing:.5px; }
+@media(max-width:900px) {
+    .kpi-row { grid-template-columns:repeat(2,1fr); }
+    .card-grid,.card-grid-3,.impl-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+    <div class="company">Blacktail Companies</div>
+    <h1>Bison Central Storage Operations Dashboard</h1>
+    <div class="meta">Report generated 2026-02-27 | 71 total units | 9,600 SF facility | 5 unit types</div>
+</div>
+
+<div class="tabs">
+    <button class="tab active" onclick="showTab('overview')">Overview</button>
+    <button class="tab" onclick="showTab('occupancy')">Occupancy</button>
+    <button class="tab" onclick="showTab('revenue')">Revenue & Rent Roll</button>
+    <button class="tab" onclick="showTab('risk')">Collections & Risk</button>
+    <button class="tab" onclick="showTab('insights')">Key Insights</button>
+</div>
+
+<!-- ============ OVERVIEW ============ -->
+<div id="tab-overview" class="tab-content active">
+
+<div class="kpi-row">
+    <div class="kpi">
+        <div class="kpi-label">Physical Occupancy</div>
+        <div class="kpi-value red">59.2%</div>
+        <div class="kpi-sub">42 of 71 units</div>
+    </div>
+    <div class="kpi">
+        <div class="kpi-label">Economic Occupancy</div>
+        <div class="kpi-value gold">73.1%</div>
+        <div class="kpi-sub">Revenue capture rate</div>
+    </div>
+    <div class="kpi">
+        <div class="kpi-label">Monthly Rent Roll</div>
+        <div class="kpi-value white">$5,086</div>
+        <div class="kpi-sub">vs $6,960 at rack rate</div>
+    </div>
+    <div class="kpi">
+        <div class="kpi-label">Vacant Units</div>
+        <div class="kpi-value coral">29</div>
+        <div class="kpi-sub">$945 in collections</div>
+    </div>
+</div>
+
+<div class="card-grid-3">
+    <div class="card">
+        <h3>Occupancy Trend (2020–2026)</h3>
+        <div class="chart-wrap"><canvas id="c-occ-trend"></canvas></div>
+    </div>
+    <div class="card">
+        <h3>Facility Summary</h3>
+        <table>
+            <thead><tr><th></th><th>Metric</th><th class="num">Value</th></tr></thead>
+            <tbody>
+                <tr><td><span class="dot dot-blue"></span></td><td>Total Units</td><td class="num"><strong>71</strong></td></tr>
+                <tr><td><span class="dot dot-green"></span></td><td>Occupied</td><td class="num"><strong>42</strong></td></tr>
+                <tr><td><span class="dot dot-red"></span></td><td>Vacant</td><td class="num"><strong>29</strong></td></tr>
+                <tr><td><span class="dot dot-gold"></span></td><td>Total SF</td><td class="num"><strong>9,600</strong></td></tr>
+                <tr><td><span class="dot dot-gold"></span></td><td>Occupied SF</td><td class="num"><strong>7,500</strong></td></tr>
+                <tr><td><span class="dot dot-coral"></span></td><td>Rate Variance</td><td class="num"><strong>$1,874</strong></td></tr>
+                <tr><td><span class="dot dot-coral"></span></td><td>Past Due</td><td class="num"><strong>$945</strong></td></tr>
+                <tr><td><span class="dot dot-blue"></span></td><td>Active Tenants</td><td class="num"><strong>42</strong></td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card-grid">
+    <div class="card">
+        <h3>Occupancy by Unit Type</h3>
+        <div class="chart-wrap"><canvas id="c-occ-type"></canvas></div>
+    </div>
+    <div class="card">
+        <h3>Unit Status Breakdown</h3>
+        <div class="chart-wrap"><canvas id="c-status"></canvas></div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Management Activity Summary</h3>
+    <table>
+        <thead><tr><th>Metric</th><th class="num">Today</th><th class="num">This Week</th><th class="num">This Month</th><th class="num">This Year</th></tr></thead>
+        <tbody><tr><td><strong>ACH</strong></td><td class="num">0</td><td class="num">0</td><td class="num">495</td><td class="num">990</td></tr><tr><td><strong>Credit Card</strong></td><td class="num">0</td><td class="num">0</td><td class="num">3950</td><td class="num">8254</td></tr><tr><td><strong>One-time Credit Card</strong></td><td class="num">0</td><td class="num">84</td><td class="num">154</td><td class="num">423</td></tr><tr><td><strong>Move Ins</strong></td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">0</td></tr><tr><td><strong>Move Outs</strong></td><td class="num">0</td><td class="num">0</td><td class="num">3</td><td class="num">3</td></tr><tr><td><strong>Late Fee</strong></td><td class="num">0</td><td class="num">0</td><td class="num">15</td><td class="num">15</td></tr><tr><td><strong>Rent</strong></td><td class="num">0</td><td class="num">84</td><td class="num">4511</td><td class="num">9227</td></tr><tr><td><strong>Tenant Protection Fee</strong></td><td class="num">0</td><td class="num">0</td><td class="num">73</td><td class="num">155</td></tr><tr><td><strong>Unallocated</strong></td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">270</td></tr></tbody></table></div>
+
+<div class="card">
+    <h3>Average Length of Stay by Unit Type</h3>
+    <table>
+        <thead><tr><th>Unit Type</th><th class="num">Avg Days</th><th class="num">Avg Months</th><th class="num">Past Rentals</th></tr></thead>
+        <tbody><tr><td><strong>5 x 10</strong></td><td class="num">188</td><td class="num">6.2</td><td class="num">87</td></tr><tr><td><strong>10 x 10</strong></td><td class="num">366</td><td class="num">12.0</td><td class="num">68</td></tr><tr><td><strong>10 x 20</strong></td><td class="num">293</td><td class="num">9.6</td><td class="num">49</td></tr><tr><td><strong>10 x 30</strong></td><td class="num">182</td><td class="num">6.0</td><td class="num">10</td></tr></tbody></table></div>
+</div>
+
+<!-- ============ OCCUPANCY ============ -->
+<div id="tab-occupancy" class="tab-content">
+
+<div class="kpi-row">
+    <div class="kpi"><div class="kpi-label">Best Performing</div><div class="kpi-value green">10 x 30</div><div class="kpi-sub">100.00% occupied</div></div>
+    <div class="kpi"><div class="kpi-label">Needs Attention</div><div class="kpi-value coral">5 x 10</div><div class="kpi-sub">16.67% occupied</div></div>
+    <div class="kpi"><div class="kpi-label">Occupied SF</div><div class="kpi-value white">7,500</div><div class="kpi-sub">of 9,600 total</div></div>
+    <div class="kpi"><div class="kpi-label">Avg Revenue / Unit</div><div class="kpi-value gold">$121.10</div><div class="kpi-sub">$44.61 below rack avg</div></div>
+</div>
+
+<div class="card-grid">
+    <div class="card">
+        <h3>Economic vs Area Occupancy Over Time</h3>
+        <div class="chart-wrap"><canvas id="c-econ-area"></canvas></div>
+    </div>
+    <div class="card">
+        <h3>Occupied Units Over Time</h3>
+        <div class="chart-wrap"><canvas id="c-units-time"></canvas></div>
+    </div>
+</div>
+
+<div class="card">
+<h3>Occupancy by Unit Type</h3>
+<table>
+<thead><tr><th>Size</th><th class="num">Units</th><th class="num">Occupied</th><th class="num">Vacant</th><th class="num">Rack Rate</th><th class="num">Avg Actual</th><th class="num">Physical Occ</th><th class="num">Econ Occ</th></tr></thead>
+<tbody><tr><td><strong>10 x 30</strong></td><td class="num">7</td><td class="num">7</td><td class="num">0</td><td class="num">$220.00</td><td class="num">$158.14</td><td class="num"><span class="badge badge-green">100.00%</span></td><td class="num">71.88%</td></tr><tr><td><strong>10 x 20</strong></td><td class="num">23</td><td class="num">20</td><td class="num">3</td><td class="num">$185.00</td><td class="num">$133.35</td><td class="num"><span class="badge badge-green">86.96%</span></td><td class="num">62.68%</td></tr><tr><td><strong>10 x 10</strong></td><td class="num">23</td><td class="num">13</td><td class="num">10</td><td class="num">$120.00</td><td class="num">$92.46</td><td class="num"><span class="badge badge-red">56.52%</span></td><td class="num">43.55%</td></tr><tr><td><strong>5 x 10</strong></td><td class="num">12</td><td class="num">2</td><td class="num">10</td><td class="num">$80.00</td><td class="num">$55.00</td><td class="num"><span class="badge badge-red">16.67%</span></td><td class="num">11.46%</td></tr></tbody></table></div>
+
+<div class="card">
+<h3>Vacant Units Available</h3>
+<table>
+<thead><tr><th>Type</th><th class="num">Area (SF)</th><th class="num">Available</th><th class="num">Rate</th><th>Unit Numbers</th></tr></thead>
+<tbody><tr><td><strong>10 x 0</strong></td><td class="num">0.0</td><td class="num">6</td><td class="num">$100.00</td><td style="font-size:12px">25  26  36  67  70  72</td></tr><tr><td><strong>5 x 10</strong></td><td class="num">50.0</td><td class="num">10</td><td class="num">$80.00</td><td style="font-size:12px">18  19  20  21  52  55  56  57  16  17</td></tr><tr><td><strong>10 x 10</strong></td><td class="num">100.0</td><td class="num">10</td><td class="num">$120.00</td><td style="font-size:12px">28  29  32  35  41  43  59  62  64  31</td></tr><tr><td><strong>10 x 20</strong></td><td class="num">200.0</td><td class="num">3</td><td class="num">$185.00</td><td style="font-size:12px">44  45  50</td></tr></tbody></table></div>
+</div>
+
+<!-- ============ REVENUE ============ -->
+<div id="tab-revenue" class="tab-content">
+
+<div class="kpi-row">
+    <div class="kpi"><div class="kpi-label">Monthly Rent Roll</div><div class="kpi-value white">$5,086</div><div class="kpi-sub">42 active tenants</div></div>
+    <div class="kpi"><div class="kpi-label">Rack Rate Total</div><div class="kpi-value gold">$6,960</div><div class="kpi-sub">Potential at full rate</div></div>
+    <div class="kpi"><div class="kpi-label">Revenue Capture</div><div class="kpi-value red">50.3%</div><div class="kpi-sub">Actual vs rack rate</div></div>
+    <div class="kpi"><div class="kpi-label">Discount Leakage</div><div class="kpi-value coral">$1,874</div><div class="kpi-sub">/month below rack</div></div>
+</div>
+
+<div class="card-grid">
+    <div class="card">
+        <h3>Monthly Revenue Trend</h3>
+        <div class="chart-wrap"><canvas id="c-rev-trend"></canvas></div>
+    </div>
+    <div class="card">
+        <h3>Revenue by Category</h3>
+        <div class="chart-wrap"><canvas id="c-rev-cat"></canvas></div>
+    </div>
+</div>
+
+<div class="card">
+<h3>Rent Roll — All Tenants</h3>
+<table>
+<thead><tr><th>Unit</th><th>Type</th><th>Tenant</th><th>Move-In</th><th class="num">Rack Rate</th><th class="num">Actual Rate</th><th class="num">Variance</th><th class="num">Balance</th><th>Paid To</th></tr></thead>
+<tbody><tr><td>49</td><td>10 x 20</td><td><strong>DON DABBERT SR</strong></td><td>1/17/2020</td><td class="num">$185.00</td><td class="num">$80.00</td><td class="num"><span class="badge badge-red">$105.00</span></td><td class="num">$0.00</td><td>5/1/2026</td></tr><tr><td>12</td><td>10 x 30</td><td><strong>CARL HENDERSHOTT (R-Hood)</strong></td><td>1/17/2020</td><td class="num">$220.00</td><td class="num">$130.00</td><td class="num"><span class="badge badge-red">$90.00</span></td><td class="num">$1,642.00</td><td>3/1/2026</td></tr><tr><td>7</td><td>10 x 30</td><td><strong>CARL HENDERSHOTT (R-Hood)</strong></td><td>1/17/2020</td><td class="num">$220.00</td><td class="num">$135.00</td><td class="num"><span class="badge badge-red">$85.00</span></td><td class="num">$1,642.00</td><td>3/1/2026</td></tr><tr><td>11</td><td>10 x 30</td><td><strong>CARL HENDERSHOTT (R-Hood)</strong></td><td>1/31/2020</td><td class="num">$220.00</td><td class="num">$135.00</td><td class="num"><span class="badge badge-red">$85.00</span></td><td class="num">$1,642.00</td><td>3/1/2026</td></tr><tr><td>66</td><td>10 x 20</td><td><strong>SOLIEN LARSON ENGINEERING</strong></td><td>1/17/2020</td><td class="num">$185.00</td><td class="num">$105.00</td><td class="num"><span class="badge badge-red">$80.00</span></td><td class="num">$0.00</td><td>10/1/2025</td></tr><tr><td>67</td><td>10 x 30</td><td><strong>VIP SOLUTIONS - DOUG HANCOCK</strong></td><td>1/17/2020</td><td class="num">$220.00</td><td class="num">$140.00</td><td class="num"><span class="badge badge-red">$80.00</span></td><td class="num">$480.00</td><td>3/1/2026</td></tr><tr><td>5</td><td>10 x 20</td><td><strong>CARL HENDERSHOTT (R-Hood)</strong></td><td>1/17/2020</td><td class="num">$185.00</td><td class="num">$110.00</td><td class="num"><span class="badge badge-red">$75.00</span></td><td class="num">$1,642.00</td><td>3/1/2026</td></tr><tr><td>61</td><td>10 x 20</td><td><strong>Chris Meier</strong></td><td>1/17/2020</td><td class="num">$185.00</td><td class="num">$110.00</td><td class="num"><span class="badge badge-red">$75.00</span></td><td class="num">$110.00</td><td>3/1/2026</td></tr><tr><td>68</td><td>10 x 20</td><td><strong>CLAUDIA "LUKE" LUICK/TONYA PLEUNE</strong></td><td>1/17/2020</td><td class="num">$185.00</td><td class="num">$110.00</td><td class="num"><span class="badge badge-red">$75.00</span></td><td class="num">$220.00</td><td>3/1/2026</td></tr><tr><td>69</td><td>10 x 20</td><td><strong>CLAUDIA "LUKE" LUICK/TONYA PLEUNE</strong></td><td>1/17/2020</td><td class="num">$185.00</td><td class="num">$110.00</td><td class="num"><span class="badge badge-red">$75.00</span></td><td class="num">$220.00</td><td>3/1/2026</td></tr><tr><td>9</td><td>10 x 20</td><td><strong>CARL HENDERSHOTT (R-Hood)</strong></td><td>1/17/2020</td><td class="num">$185.00</td><td class="num">$115.00</td><td class="num"><span class="badge badge-red">$70.00</span></td><td class="num">$1,642.00</td><td>3/1/2026</td></tr><tr><td>10</td><td>10 x 20</td><td><strong>CARL HENDERSHOTT (R-Hood)</strong></td><td>1/17/2020</td><td class="num">$185.00</td><td class="num">$115.00</td><td class="num"><span class="badge badge-red">$70.00</span></td><td class="num">$1,642.00</td><td>3/1/2026</td></tr><tr><td>15</td><td>10 x 20</td><td><strong>CARL HENDERSHOTT (R-Hood)</strong></td><td>1/17/2020</td><td class="num">$185.00</td><td class="num">$115.00</td><td class="num"><span class="badge badge-red">$70.00</span></td><td class="num">$1,642.00</td><td>3/1/2026</td></tr><tr><td>4</td><td>10 x 20</td><td><strong>MIKE JENKINS</strong></td><td>1/17/2020</td><td class="num">$185.00</td><td class="num">$117.00</td><td class="num"><span class="badge badge-red">$68.00</span></td><td class="num">$117.00</td><td>3/1/2026</td></tr><tr><td>71</td><td>10 x 20</td><td><strong>VIP SOLUTIONS - DOUG HANCOCK</strong></td><td>1/17/2020</td><td class="num">$185.00</td><td class="num">$120.00</td><td class="num"><span class="badge badge-red">$65.00</span></td><td class="num">$480.00</td><td>3/1/2026</td></tr><tr><td>24</td><td>10 x 10</td><td><strong>Steven Crawford</strong></td><td>10/9/2025</td><td class="num">$120.00</td><td class="num">$60.00</td><td class="num"><span class="badge badge-red">$60.00</span></td><td class="num">$175.00</td><td>2/1/2026</td></tr><tr><td>1</td><td>10 x 30</td><td><strong>JOE TAMERIUS</strong></td><td>1/17/2020</td><td class="num">$220.00</td><td class="num">$162.00</td><td class="num"><span class="badge badge-red">$58.00</span></td><td class="num">$162.00</td><td>3/1/2026</td></tr><tr><td>47</td><td>10 x 20</td><td><strong>WALLY & DEE KLUCK</strong></td><td>1/17/2020</td><td class="num">$185.00</td><td class="num">$130.00</td><td class="num"><span class="badge badge-red">$55.00</span></td><td class="num">$158.00</td><td>3/1/2026</td></tr><tr><td>14</td><td>10 x 20</td><td><strong>Yusuf Riji</strong></td><td>9/1/2023</td><td class="num">$185.00</td><td class="num">$135.00</td><td class="num"><span class="badge badge-gold">$50.00</span></td><td class="num">$135.00</td><td>3/1/2026</td></tr><tr><td>3</td><td>10 x 20</td><td><strong>CARL HENDERSHOTT (R-Hood)</strong></td><td>10/14/2025</td><td class="num">$185.00</td><td class="num">$140.00</td><td class="num"><span class="badge badge-gold">$45.00</span></td><td class="num">$1,642.00</td><td>3/1/2026</td></tr><tr><td>63</td><td>10 x 20</td><td><strong>Wenck Now Part of Stantec</strong></td><td>4/17/2020</td><td class="num">$185.00</td><td class="num">$140.00</td><td class="num"><span class="badge badge-gold">$45.00</span></td><td class="num">$140.00</td><td>3/1/2026</td></tr><tr><td>46</td><td>10 x 10</td><td><strong>CARL HENDERSHOTT (R-Hood)</strong></td><td>9/21/2020</td><td class="num">$120.00</td><td class="num">$78.00</td><td class="num"><span class="badge badge-gold">$42.00</span></td><td class="num">$1,642.00</td><td>3/1/2026</td></tr><tr><td>33</td><td>10 x 10</td><td><strong>JEANETTE BASKERVILLE</strong></td><td>1/17/2020</td><td class="num">$120.00</td><td class="num">$84.00</td><td class="num"><span class="badge badge-gold">$36.00</span></td><td class="num">$0.00</td><td>4/1/2026</td></tr><tr><td>23</td><td>10 x 10</td><td><strong>ESTHER GAYLAH</strong></td><td>1/17/2020</td><td class="num">$120.00</td><td class="num">$85.00</td><td class="num"><span class="badge badge-gold">$35.00</span></td><td class="num">$170.00</td><td>3/1/2026</td></tr><tr><td>39</td><td>10 x 30</td><td><strong>Annabelle F Mauri</strong></td><td>12/7/2021</td><td class="num">$220.00</td><td class="num">$185.00</td><td class="num"><span class="badge badge-gold">$35.00</span></td><td class="num">$185.00</td><td>3/1/2026</td></tr><tr><td>48</td><td>10 x 10</td><td><strong>ESTHER GAYLAH</strong></td><td>1/17/2020</td><td class="num">$120.00</td><td class="num">$85.00</td><td class="num"><span class="badge badge-gold">$35.00</span></td><td class="num">$170.00</td><td>3/1/2026</td></tr><tr><td>34</td><td>10 x 10</td><td><strong>NATURAL PET CENTER (MICHELLE SMITH)</strong></td><td>1/17/2020</td><td class="num">$120.00</td><td class="num">$90.00</td><td class="num"><span class="badge badge-gold">$30.00</span></td><td class="num">$90.00</td><td>3/1/2026</td></tr><tr><td>40</td><td>10 x 10</td><td><strong>CHARLES BELTER</strong></td><td>1/17/2020</td><td class="num">$120.00</td><td class="num">$90.00</td><td class="num"><span class="badge badge-gold">$30.00</span></td><td class="num">$-180.00</td><td>3/1/2026</td></tr><tr><td>58</td><td>10 x 10</td><td><strong>ROGER EGGERT</strong></td><td>1/17/2020</td><td class="num">$120.00</td><td class="num">$90.00</td><td class="num"><span class="badge badge-gold">$30.00</span></td><td class="num">$90.00</td><td>12/1/2025</td></tr><tr><td>22</td><td>10 x 10</td><td><strong>BECKY BERGE</strong></td><td>1/17/2020</td><td class="num">$120.00</td><td class="num">$95.00</td><td class="num"><span class="badge badge-gold">$25.00</span></td><td class="num">$95.00</td><td>3/1/2026</td></tr><tr><td>53</td><td>5 x 10</td><td><strong>Adrianna Johnson</strong></td><td>8/9/2021</td><td class="num">$80.00</td><td class="num">$55.00</td><td class="num"><span class="badge badge-gold">$25.00</span></td><td class="num">$64.00</td><td>3/1/2026</td></tr><tr><td>54</td><td>5 x 10</td><td><strong>James Person</strong></td><td>6/27/2021</td><td class="num">$80.00</td><td class="num">$55.00</td><td class="num"><span class="badge badge-gold">$25.00</span></td><td class="num">$55.00</td><td>3/1/2026</td></tr><tr><td>27</td><td>10 x 10</td><td><strong>Frederick W, Archdale</strong></td><td>5/30/2025</td><td class="num">$120.00</td><td class="num">$100.00</td><td class="num"><span class="badge badge-gold">$20.00</span></td><td class="num">$100.00</td><td>3/1/2026</td></tr><tr><td>65</td><td>10 x 10</td><td><strong>Diane M Salazar</strong></td><td>11/18/2022</td><td class="num">$120.00</td><td class="num">$105.00</td><td class="num"><span class="badge badge-gold">$15.00</span></td><td class="num">$114.00</td><td>3/1/2026</td></tr><tr><td>8</td><td>10 x 20</td><td><strong>CARL HENDERSHOTT (R-Hood)</strong></td><td>3/1/2023</td><td class="num">$185.00</td><td class="num">$175.00</td><td class="num"><span class="badge badge-gold">$10.00</span></td><td class="num">$1,642.00</td><td>3/1/2026</td></tr><tr><td>2</td><td>10 x 20</td><td><strong>Davina Scott</strong></td><td>12/1/2025</td><td class="num">$185.00</td><td class="num">$185.00</td><td class="num"><span class="badge badge-green">$0.00</span></td><td class="num">$770.00</td><td></td></tr><tr><td>6</td><td>10 x 20</td><td><strong>CARL HENDERSHOTT (R-Hood)</strong></td><td>12/7/2023</td><td class="num">$185.00</td><td class="num">$185.00</td><td class="num"><span class="badge badge-green">$0.00</span></td><td class="num">$1,642.00</td><td>3/1/2026</td></tr><tr><td>13</td><td>10 x 20</td><td><strong>CARL HENDERSHOTT (R-Hood)</strong></td><td>1/22/2025</td><td class="num">$185.00</td><td class="num">$185.00</td><td class="num"><span class="badge badge-green">$0.00</span></td><td class="num">$1,642.00</td><td>3/1/2026</td></tr><tr><td>37</td><td>10 x 30</td><td><strong>VIP SOLUTIONS - DOUG HANCOCK</strong></td><td>11/1/2023</td><td class="num">$220.00</td><td class="num">$220.00</td><td class="num"><span class="badge badge-green">$0.00</span></td><td class="num">$480.00</td><td>3/1/2026</td></tr><tr><td>38</td><td>10 x 10</td><td><strong>Michael L Monda</strong></td><td>6/11/2025</td><td class="num">$120.00</td><td class="num">$120.00</td><td class="num"><span class="badge badge-green">$0.00</span></td><td class="num">$132.00</td><td>3/1/2026</td></tr><tr><td>51</td><td>10 x 20</td><td><strong>Anthony J Heer</strong></td><td>3/25/2025</td><td class="num">$185.00</td><td class="num">$185.00</td><td class="num"><span class="badge badge-green">$0.00</span></td><td class="num">$185.00</td><td>3/1/2026</td></tr><tr><td>60</td><td>10 x 10</td><td><strong>Kandiss M Heier</strong></td><td>7/1/2025</td><td class="num">$120.00</td><td class="num">$120.00</td><td class="num"><span class="badge badge-green">$0.00</span></td><td class="num">$120.00</td><td>3/1/2026</td></tr></tbody></table></div>
+
+<div class="card">
+<h3>Biggest Discounts from Rack Rate</h3>
+<table>
+<thead><tr><th>Unit</th><th>Tenant</th><th class="num">Rack Rate</th><th class="num">Actual</th><th class="num">Monthly Variance</th><th class="num">Annual Impact</th></tr></thead>
+<tbody><tr><td>49</td><td><strong>DON DABBERT SR</strong></td><td class="num">$185.00</td><td class="num">$80.00</td><td class="num"><span class="badge badge-red">$105.00</span></td><td class="num" style="color:var(--coral)"><strong>$1,260.00</strong></td></tr><tr><td>12</td><td><strong>CARL HENDERSHOTT (R-Hood)</strong></td><td class="num">$220.00</td><td class="num">$130.00</td><td class="num"><span class="badge badge-red">$90.00</span></td><td class="num" style="color:var(--coral)"><strong>$1,080.00</strong></td></tr><tr><td>7</td><td><strong>CARL HENDERSHOTT (R-Hood)</strong></td><td class="num">$220.00</td><td class="num">$135.00</td><td class="num"><span class="badge badge-red">$85.00</span></td><td class="num" style="color:var(--coral)"><strong>$1,020.00</strong></td></tr><tr><td>11</td><td><strong>CARL HENDERSHOTT (R-Hood)</strong></td><td class="num">$220.00</td><td class="num">$135.00</td><td class="num"><span class="badge badge-red">$85.00</span></td><td class="num" style="color:var(--coral)"><strong>$1,020.00</strong></td></tr><tr><td>66</td><td><strong>SOLIEN LARSON ENGINEERING</strong></td><td class="num">$185.00</td><td class="num">$105.00</td><td class="num"><span class="badge badge-red">$80.00</span></td><td class="num" style="color:var(--coral)"><strong>$960.00</strong></td></tr></tbody></table></div>
+</div>
+
+<!-- ============ COLLECTIONS ============ -->
+<div id="tab-risk" class="tab-content">
+
+<div class="kpi-row">
+    <div class="kpi"><div class="kpi-label">Total Past Due</div><div class="kpi-value red">$945</div><div class="kpi-sub">Outstanding balances</div></div>
+    <div class="kpi"><div class="kpi-label">Tenants in Collections</div><div class="kpi-value coral">2</div><div class="kpi-sub">Active collection cases</div></div>
+    <div class="kpi"><div class="kpi-label">Repeat Failed Payments</div><div class="kpi-value gold">20</div><div class="kpi-sub">3+ failures</div></div>
+    <div class="kpi"><div class="kpi-label">Total Decline Events</div><div class="kpi-value white">726</div><div class="kpi-sub">All-time payment failures</div></div>
+</div>
+
+<div class="card">
+<h3>Collections — Past Due Accounts</h3>
+<table>
+<thead><tr><th>Tenant</th><th class="num">Balance</th><th class="num">Days Behind</th><th>Lockout</th><th>Locked Out</th><th>Auction Date</th><th>Phone</th><th>Email</th></tr></thead>
+<tbody><tr><td><strong>Davina Scott</strong></td><td class="num" style="color:var(--coral)"><strong>$770.00</strong></td><td class="num">88</td><td>Yes</td><td>2025-12-11</td><td>2026-01-20</td><td>(414) 810-8758</td><td>Davinascott01@gmail.com</td></tr><tr><td><strong>Steven Crawford</strong></td><td class="num" style="color:var(--coral)"><strong>$175.00</strong></td><td class="num">26</td><td>Yes</td><td>2026-02-11</td><td>2026-03-23</td><td>(701) 630-3012</td><td>stevencrawford022@gmail.com</td></tr></tbody></table></div>
+
+<div class="card">
+<h3>Failed & Declined Payments — Repeat Offenders (Top 20)</h3>
+<table>
+<thead><tr><th>Tenant</th><th class="num">Failures</th></tr></thead>
+<tbody><tr><td><strong>Ronald j mcmahan</strong></td><td class="num"><span class="badge badge-red">71</span></td></tr><tr><td><strong>CARL HENDERSHOTT (R-Hood)</strong></td><td class="num"><span class="badge badge-red">43</span></td></tr><tr><td><strong>Dixon Aguebor</strong></td><td class="num"><span class="badge badge-red">40</span></td></tr><tr><td><strong>Ryan Sherbrooke</strong></td><td class="num"><span class="badge badge-red">32</span></td></tr><tr><td><strong>Trevor A Lowney</strong></td><td class="num"><span class="badge badge-red">23</span></td></tr><tr><td><strong>WISDOM KWEKU ACKOM</strong></td><td class="num"><span class="badge badge-red">22</span></td></tr><tr><td><strong>Joseph J Carik</strong></td><td class="num"><span class="badge badge-red">21</span></td></tr><tr><td><strong>annette M Quinn</strong></td><td class="num"><span class="badge badge-red">21</span></td></tr><tr><td><strong>Shunta l northern</strong></td><td class="num"><span class="badge badge-red">21</span></td></tr><tr><td><strong>Jennifer M. Bahnsen</strong></td><td class="num"><span class="badge badge-red">20</span></td></tr><tr><td><strong>Casey W Kroll</strong></td><td class="num"><span class="badge badge-red">17</span></td></tr><tr><td><strong>Devon Quinn</strong></td><td class="num"><span class="badge badge-red">16</span></td></tr><tr><td><strong>Brandi Kaye Tveter</strong></td><td class="num"><span class="badge badge-red">16</span></td></tr><tr><td><strong>Harrison Dargbeh</strong></td><td class="num"><span class="badge badge-red">15</span></td></tr><tr><td><strong>James Erickson</strong></td><td class="num"><span class="badge badge-red">13</span></td></tr><tr><td><strong>ESTHER GAYLAH</strong></td><td class="num"><span class="badge badge-red">13</span></td></tr><tr><td><strong>Conrad  G kurth</strong></td><td class="num"><span class="badge badge-red">13</span></td></tr><tr><td><strong>Kevin Guerrero</strong></td><td class="num"><span class="badge badge-red">13</span></td></tr><tr><td><strong>Jennifer Broadway</strong></td><td class="num"><span class="badge badge-red">12</span></td></tr><tr><td><strong>Caery L Ritter</strong></td><td class="num"><span class="badge badge-red">12</span></td></tr></tbody></table></div>
+
+<div class="card">
+<h3>Refund Summary</h3>
+<table>
+<thead><tr><th>Metric</th><th class="num">Value</th></tr></thead>
+<tbody>
+<tr><td>Total Refund Count</td><td class="num"><strong>92</strong></td></tr>
+<tr><td>Total Refund Amount</td><td class="num" style="color:var(--coral)"><strong>$9,016.23</strong></td></tr>
+</tbody></table></div>
+</div>
+
+<!-- ============ KEY INSIGHTS ============ -->
+<div id="tab-insights" class="tab-content">
+
+<div class="insight-card">
+<h2>Portfolio-Level Findings</h2>
+
+<h3>1. Tenant Concentration Risk — Carl Hendershott (R-Hood) Dominates the Rent Roll</h3>
+<p>Carl Hendershott occupies 12 of 42 rented units (28.6% of tenants), generating $1,618/month — roughly 31.8% of total rent. Many of these are legacy leases from January 2020 at deeply discounted rates ($110-$185 vs. rack rates of $185-$220). A single tenant departure or default would create massive revenue exposure. This is the facility's single largest risk factor.</p>
+
+<h3>2. Economic Occupancy (73.1%) Trails Physical (59.2%) — Deep Legacy Discounts</h3>
+<p>The -13.9 percentage point gap between physical and economic occupancy reveals significant rent leakage. The facility collects $5,086/month against a rack-rate potential of $6,960, leaving $1,874/month ($22,488/year) on the table. Many January 2020 legacy tenants are paying 30-55% below current rack rates.</p>
+
+<h3>3. 5x10 Units Are the Vacancy Problem — 10x30 Is Fully Leased</h3>
+<p>The 10 x 30 units are at 100.00% physical occupancy — every unit rented. Meanwhile, the 5 x 10 units sit at just 16.67%, with 10 available units. The 10x0 "dummy" units (6 unavailable) bring the headline number down further. The actual vacancy problem is concentrated in the smallest units.</p>
+
+<h3>4. Facility Has 6 Years of History — Occupancy Has Cycled Between 50-75%</h3>
+<p>Since 2020, Bison Central has oscillated in the 50-75% economic occupancy range, never consistently breaking through 70%. Area occupancy has been stronger (80-98%), meaning the physical units fill but at discounted rates. The facility has a structural pricing problem, not just an occupancy one.</p>
+
+<h3>5. Collections Exposure Is Moderate but Active</h3>
+<p>Two tenants are in collections: Davina Scott ($770, 88 days behind, already locked out with auction date 2026-01-20) and Steven Crawford ($175, 26 days behind, locked out with auction date 2026-03-23). The failed payments log shows 726 total decline events, with 20 tenants having 3+ failures.</p>
+</div>
+
+<div class="insight-card">
+<h2>Operational Implications</h2>
+<div class="impl-grid">
+    <div class="impl-box revenue">
+        <h4>Revenue Optimization</h4>
+        <ul>
+            <li>Implement a phased rate increase plan for 35 tenants paying below rack rate — prioritize those 2+ years below rate</li>
+            <li>Carl Hendershott's 12 units need a structured rate normalization (some are paying $110 on $185 rack — 40% discount)</li>
+            <li>The $22,488/year in discount leakage is the single biggest revenue opportunity without adding a single tenant</li>
+            <li>Annual escalations of 3-5% on legacy leases would close $15,000-$25,000/year of the gap over 3 years</li>
+        </ul>
+    </div>
+    <div class="impl-box marketing">
+        <h4>Marketing & Leasing</h4>
+        <ul>
+            <li>The 5x10 units (10 available at $80/month) may need repositioning — consider bundling discounts or targeting college students, seasonal storage</li>
+            <li>10x10 has 10 available units — this is the second-priority product for leasing efforts</li>
+            <li>10x30 demand is strong (100% occupied) — evaluate whether any can be subdivided or if there's demand for more of this size</li>
+        </ul>
+    </div>
+    <div class="impl-box capex">
+        <h4>Risk Management</h4>
+        <ul>
+            <li>Davina Scott auction was scheduled for 2026-01-20 — confirm resolution or unit turnover</li>
+            <li>Reduce single-tenant concentration: Carl Hendershott's 12 units represent existential risk if the relationship sours</li>
+            <li>Tenants with 3+ payment failures need proactive outreach or alternative payment arrangements</li>
+            <li>DON DABBERT SR is paying $80 on a $185 10x20 — $105/month variance, the largest single discount at 57% below rack</li>
+        </ul>
+    </div>
+    <div class="impl-box data">
+        <h4>Data Gaps to Address</h4>
+        <ul>
+            <li>No waiting list data for Bison Central — unlike Black Label, we can't quantify unmet demand</li>
+            <li>The 10x0 "dummy" units (6 unavailable) inflate the vacancy count — clean up the unit inventory</li>
+            <li>Move-out reason codes would help identify whether vacancy is seasonal, price-driven, or service-driven</li>
+            <li>Budget vs. actual P&L data is needed for proper financial performance tracking</li>
+        </ul>
+    </div>
+</div>
+</div>
+
+<div class="insight-card" style="border-left:3px solid var(--gold);padding-left:28px">
+<h2 style="font-size:16px">Bottom Line</h2>
+<p style="font-size:14px;line-height:1.8;color:var(--text)">Bison Central is a mature facility that has never broken through the 70% economic occupancy ceiling despite reasonable area occupancy (80%+). The core issue is twofold: (1) deep legacy discounts — particularly 12 units rented to a single tenant at 30-55% below rack rate — and (2) weak demand for the smallest 5x10 units. The highest-leverage move is rate normalization on existing tenants, which could recover $22,488/year without signing a single new lease. Secondary priority is filling the 10x10 and 5x10 vacancy with targeted marketing. Combined, these actions could push the facility from 73.1% to 75%+ economic occupancy within 12 months.</p>
+</div>
+
+</div>
+
+<footer>Bison Central Storage Operations Dashboard | Blacktail Companies | Generated February 27, 2026 | Prepared by Alter Ego</footer>
+</div>
+
+<script>
+Chart.defaults.color = '#9a9590';
+Chart.defaults.borderColor = '#333';
+Chart.defaults.font.family = "'Segoe UI','Helvetica Neue',sans-serif";
+Chart.defaults.font.size = 12;
+Chart.defaults.plugins.legend.display = false;
+
+const charts = {};
+function mk(id, cfg) {
+    if (charts[id]) charts[id].destroy();
+    charts[id] = new Chart(document.getElementById(id), cfg);
+}
+
+function showTab(name) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-'+name).classList.add('active');
+    event.target.classList.add('active');
+    if (name === 'overview') initOverview();
+    if (name === 'occupancy') initOccupancy();
+    if (name === 'revenue') initRevenue();
+}
+
+const H = [{"month": "2020-01", "econ_occ": 48.85, "area_occ": 85.42, "occ_units": 52, "total_units": 71}, {"month": "2020-02", "econ_occ": 57.48, "area_occ": 84.38, "occ_units": 51, "total_units": 71}, {"month": "2020-03", "econ_occ": 61.06, "area_occ": 88.02, "occ_units": 54, "total_units": 71}, {"month": "2020-04", "econ_occ": 68.21, "area_occ": 95.83, "occ_units": 59, "total_units": 71}, {"month": "2020-05", "econ_occ": 64.65, "area_occ": 98.96, "occ_units": 62, "total_units": 71}, {"month": "2020-06", "econ_occ": 62.53, "area_occ": 96.88, "occ_units": 59, "total_units": 71}, {"month": "2020-07", "econ_occ": 63.96, "area_occ": 96.35, "occ_units": 60, "total_units": 71}, {"month": "2020-08", "econ_occ": 61.57, "area_occ": 93.59, "occ_units": 58, "total_units": 72}, {"month": "2020-09", "econ_occ": 62.86, "area_occ": 95.12, "occ_units": 59, "total_units": 72}, {"month": "2020-10", "econ_occ": 62.07, "area_occ": 93.9, "occ_units": 58, "total_units": 72}, {"month": "2020-11", "econ_occ": 63.72, "area_occ": 94.79, "occ_units": 57, "total_units": 71}, {"month": "2020-12", "econ_occ": 62.9, "area_occ": 92.71, "occ_units": 57, "total_units": 71}, {"month": "2021-01", "econ_occ": 67.02, "area_occ": 88.54, "occ_units": 55, "total_units": 71}, {"month": "2021-02", "econ_occ": 69.97, "area_occ": 92.19, "occ_units": 57, "total_units": 71}, {"month": "2021-03", "econ_occ": 75.15, "area_occ": 97.4, "occ_units": 62, "total_units": 71}, {"month": "2021-04", "econ_occ": 75.44, "area_occ": 97.4, "occ_units": 62, "total_units": 71}, {"month": "2021-05", "econ_occ": 76.59, "area_occ": 98.96, "occ_units": 62, "total_units": 71}, {"month": "2021-06", "econ_occ": 73.06, "area_occ": 93.23, "occ_units": 59, "total_units": 71}, {"month": "2021-07", "econ_occ": 76.45, "area_occ": 96.88, "occ_units": 61, "total_units": 71}, {"month": "2021-08", "econ_occ": 72.74, "area_occ": 95.31, "occ_units": 60, "total_units": 71}, {"month": "2021-09", "econ_occ": 72.47, "area_occ": 94.79, "occ_units": 60, "total_units": 71}, {"month": "2021-10", "econ_occ": 74.9, "area_occ": 97.4, "occ_units": 62, "total_units": 71}, {"month": "2021-11", "econ_occ": 72.05, "area_occ": 94.27, "occ_units": 59, "total_units": 71}, {"month": "2021-12", "econ_occ": 76.09, "area_occ": 98.96, "occ_units": 62, "total_units": 71}, {"month": "2022-01", "econ_occ": 70.77, "area_occ": 95.83, "occ_units": 59, "total_units": 71}, {"month": "2022-02", "econ_occ": 70.77, "area_occ": 95.83, "occ_units": 59, "total_units": 71}, {"month": "2022-03", "econ_occ": 74.8, "area_occ": 99.48, "occ_units": 63, "total_units": 71}, {"month": "2022-04", "econ_occ": 72.72, "area_occ": 96.35, "occ_units": 62, "total_units": 71}, {"month": "2022-05", "econ_occ": 73.2, "area_occ": 99.48, "occ_units": 63, "total_units": 71}, {"month": "2022-06", "econ_occ": 69.45, "area_occ": 99.48, "occ_units": 63, "total_units": 71}, {"month": "2022-07", "econ_occ": 66.59, "area_occ": 94.79, "occ_units": 60, "total_units": 71}, {"month": "2022-08", "econ_occ": 69.4, "area_occ": 96.88, "occ_units": 62, "total_units": 71}, {"month": "2022-09", "econ_occ": 72.04, "area_occ": 99.48, "occ_units": 64, "total_units": 71}, {"month": "2022-10", "econ_occ": 58.38, "area_occ": 89.58, "occ_units": 57, "total_units": 71}, {"month": "2022-11", "econ_occ": 56.24, "area_occ": 89.58, "occ_units": 59, "total_units": 71}, {"month": "2022-12", "econ_occ": 55.76, "area_occ": 89.06, "occ_units": 58, "total_units": 71}, {"month": "2023-01", "econ_occ": 60.18, "area_occ": 94.27, "occ_units": 60, "total_units": 71}, {"month": "2023-02", "econ_occ": 60.18, "area_occ": 94.27, "occ_units": 60, "total_units": 71}, {"month": "2023-03", "econ_occ": 64.65, "area_occ": 98.96, "occ_units": 63, "total_units": 71}, {"month": "2023-04", "econ_occ": 62.79, "area_occ": 96.35, "occ_units": 62, "total_units": 71}, {"month": "2023-05", "econ_occ": 61.98, "area_occ": 98.96, "occ_units": 63, "total_units": 71}, {"month": "2023-06", "econ_occ": 61.98, "area_occ": 98.96, "occ_units": 63, "total_units": 71}, {"month": "2023-07", "econ_occ": 57.83, "area_occ": 93.75, "occ_units": 60, "total_units": 71}, {"month": "2023-08", "econ_occ": 52.29, "area_occ": 85.94, "occ_units": 57, "total_units": 71}, {"month": "2023-09", "econ_occ": 48.53, "area_occ": 81.25, "occ_units": 53, "total_units": 71}, {"month": "2023-10", "econ_occ": 53.77, "area_occ": 86.98, "occ_units": 56, "total_units": 71}, {"month": "2023-11", "econ_occ": 53.57, "area_occ": 87.5, "occ_units": 55, "total_units": 71}, {"month": "2023-12", "econ_occ": 57.68, "area_occ": 91.67, "occ_units": 58, "total_units": 71}, {"month": "2024-01", "econ_occ": 58.86, "area_occ": 92.71, "occ_units": 59, "total_units": 71}, {"month": "2024-02", "econ_occ": 56.89, "area_occ": 91.15, "occ_units": 57, "total_units": 71}, {"month": "2024-03", "econ_occ": 57.68, "area_occ": 91.67, "occ_units": 58, "total_units": 71}, {"month": "2024-04", "econ_occ": 58.86, "area_occ": 92.71, "occ_units": 59, "total_units": 71}, {"month": "2024-05", "econ_occ": 59.21, "area_occ": 92.19, "occ_units": 60, "total_units": 71}, {"month": "2024-06", "econ_occ": 61.83, "area_occ": 95.31, "occ_units": 61, "total_units": 71}, {"month": "2024-07", "econ_occ": 63.66, "area_occ": 97.4, "occ_units": 62, "total_units": 71}, {"month": "2024-08", "econ_occ": 55.21, "area_occ": 88.54, "occ_units": 55, "total_units": 71}, {"month": "2024-09", "econ_occ": 53.87, "area_occ": 86.46, "occ_units": 54, "total_units": 71}, {"month": "2024-10", "econ_occ": 58.81, "area_occ": 84.38, "occ_units": 53, "total_units": 71}, {"month": "2024-11", "econ_occ": 58.02, "area_occ": 83.85, "occ_units": 52, "total_units": 71}, {"month": "2024-12", "econ_occ": 58.07, "area_occ": 83.85, "occ_units": 52, "total_units": 71}, {"month": "2026-01", "econ_occ": 53.15, "area_occ": 80.73, "occ_units": 45, "total_units": 71}];
+const OT = [{"size": "5 x 10", "units": 12, "occupied": 2, "occ_pct": 16.67, "econ_occ": 11.46, "price": 80.0, "avg_price": 55.0}, {"size": "10 x 10", "units": 23, "occupied": 13, "occ_pct": 56.52, "econ_occ": 43.55, "price": 120.0, "avg_price": 92.46}, {"size": "10 x 20", "units": 23, "occupied": 20, "occ_pct": 86.96, "econ_occ": 62.68, "price": 185.0, "avg_price": 133.35}, {"size": "10 x 30", "units": 7, "occupied": 7, "occ_pct": 100.0, "econ_occ": 71.88, "price": 220.0, "avg_price": 158.14}];
+const ST = [{"type": "10 x 0", "rented": 0, "available": 0, "other": 6}, {"type": "5 x 10", "rented": 2, "available": 8, "other": 2}, {"type": "10 x 10", "rented": 12, "available": 10, "other": 1}, {"type": "10 x 20", "rented": 19, "available": 3, "other": 1}, {"type": "10 x 30", "rented": 7, "available": 0, "other": 0}];
+const RM = [{"month": "2024-03", "total": 6854.03}, {"month": "2024-04", "total": 4743.37}, {"month": "2024-05", "total": 7454.1}, {"month": "2024-06", "total": 5793.46}, {"month": "2024-07", "total": 6343.9}, {"month": "2024-08", "total": 5624.0}, {"month": "2024-09", "total": 5120.34}, {"month": "2024-10", "total": 5748.06}, {"month": "2024-11", "total": 5976.0}, {"month": "2024-12", "total": 5266.03}, {"month": "2025-01", "total": 5193.0}, {"month": "2025-02", "total": 5793.0}, {"month": "2025-03", "total": 5114.0}, {"month": "2025-04", "total": 5275.38}, {"month": "2025-05", "total": 5758.45}, {"month": "2025-06", "total": 5345.4}, {"month": "2025-07", "total": 5706.74}, {"month": "2025-08", "total": 6060.81}, {"month": "2025-09", "total": 4858.0}, {"month": "2025-10", "total": 4914.29}, {"month": "2025-11", "total": 5496.33}, {"month": "2025-12", "total": 4828.0}, {"month": "2026-01", "total": 5068.0}, {"month": "2026-02", "total": 4599.0}];
+const RA = [{"action": "Rent", "total": 287652.76}, {"action": "Rent, Tenant Protection Fee", "total": 48941.4}, {"action": "Rent, late fee, lock removal fee", "total": 8636.43}, {"action": "Rent, late fee", "total": 7997.08}, {"action": "Deposit, Prorated, Rent", "total": 5705.43}, {"action": "Deposit, Prorated", "total": 4738.22}, {"action": "Rent, Tenant Protection Fee, late fee, lock removal fee", "total": 3981.0}, {"action": "Prorated, Rent", "total": 3610.54}];
+
+function initOverview() {
+    mk('c-occ-trend', {
+        type:'line',
+        data:{ labels:H.map(d=>d.month), datasets:[
+            { label:'Economic Occ', data:H.map(d=>d.econ_occ), borderColor:'#c9a96e', backgroundColor:'rgba(201,169,110,.1)', fill:true, borderWidth:2, tension:.3, pointRadius:1 },
+            { label:'Area Occ', data:H.map(d=>d.area_occ), borderColor:'#5b8fb9', borderWidth:2, tension:.3, pointRadius:1, borderDash:[5,5] }
+        ]},
+        options:{ responsive:true, maintainAspectRatio:false,
+            plugins:{ legend:{ display:true, position:'top', labels:{ usePointStyle:true, color:'#9a9590' } } },
+            scales:{ y:{ beginAtZero:true, max:100, grid:{color:'#333'}, ticks:{callback:v=>v+'%'} }, x:{grid:{display:false}, ticks:{maxTicksLimit:12} } }
+        }
+    });
+    mk('c-occ-type', {
+        type:'bar',
+        data:{ labels:OT.map(d=>d.size), datasets:[
+            { label:'Physical', data:OT.map(d=>d.occ_pct), backgroundColor:'rgba(91,143,185,.7)', borderRadius:4, barPercentage:.4 },
+            { label:'Economic', data:OT.map(d=>d.econ_occ), backgroundColor:'rgba(201,169,110,.7)', borderRadius:4, barPercentage:.4 }
+        ]},
+        options:{ responsive:true, maintainAspectRatio:false,
+            plugins:{ legend:{ display:true, position:'top', labels:{ usePointStyle:true, color:'#9a9590' } } },
+            scales:{ y:{ beginAtZero:true, max:100, grid:{color:'#333'}, ticks:{callback:v=>v+'%'} }, x:{grid:{display:false} } }
+        }
+    });
+    mk('c-status', {
+        type:'bar',
+        data:{ labels:ST.map(d=>d.type), datasets:[
+            { label:'Rented', data:ST.map(d=>d.rented), backgroundColor:'rgba(107,171,115,.8)', borderRadius:2 },
+            { label:'Available', data:ST.map(d=>d.available), backgroundColor:'rgba(194,91,86,.8)', borderRadius:2 },
+            { label:'Other', data:ST.map(d=>d.other), backgroundColor:'rgba(201,169,110,.8)', borderRadius:2 }
+        ]},
+        options:{ responsive:true, maintainAspectRatio:false,
+            plugins:{ legend:{ display:true, position:'top', labels:{ usePointStyle:true, color:'#9a9590' } } },
+            scales:{ x:{ stacked:true, grid:{display:false} }, y:{ stacked:true, beginAtZero:true, grid:{color:'#333'} } }
+        }
+    });
+}
+
+function initOccupancy() {
+    mk('c-econ-area', {
+        type:'line',
+        data:{ labels:H.map(d=>d.month), datasets:[
+            { label:'Economic', data:H.map(d=>d.econ_occ), borderColor:'#c9a96e', borderWidth:2, tension:.3, pointRadius:1 },
+            { label:'Area', data:H.map(d=>d.area_occ), borderColor:'#5b8fb9', borderWidth:2, tension:.3, pointRadius:1 }
+        ]},
+        options:{ responsive:true, maintainAspectRatio:false,
+            plugins:{ legend:{ display:true, position:'top', labels:{ usePointStyle:true, color:'#9a9590' } } },
+            scales:{ y:{ beginAtZero:true, max:100, grid:{color:'#333'}, ticks:{callback:v=>v+'%'} }, x:{grid:{display:false}, ticks:{maxTicksLimit:12} } }
+        }
+    });
+    mk('c-units-time', {
+        type:'line',
+        data:{ labels:H.map(d=>d.month), datasets:[
+            { label:'Occupied', data:H.map(d=>d.occ_units), borderColor:'#6bab73', backgroundColor:'rgba(107,171,115,.12)', fill:true, borderWidth:2, tension:.3, pointRadius:1 },
+            { label:'Total', data:H.map(d=>d.total_units), borderColor:'#c25b56', borderWidth:2, tension:0, pointRadius:0, borderDash:[5,5] }
+        ]},
+        options:{ responsive:true, maintainAspectRatio:false,
+            plugins:{ legend:{ display:true, position:'top', labels:{ usePointStyle:true, color:'#9a9590' } } },
+            scales:{ y:{ beginAtZero:true, grid:{color:'#333'} }, x:{grid:{display:false}, ticks:{maxTicksLimit:12} } }
+        }
+    });
+}
+
+function initRevenue() {
+    mk('c-rev-trend', {
+        type:'line',
+        data:{ labels:RM.map(d=>d.month), datasets:[
+            { data:RM.map(d=>d.total), borderColor:'#c9a96e', backgroundColor:'rgba(201,169,110,.1)', fill:true, borderWidth:2, tension:.3, pointRadius:2 }
+        ]},
+        options:{ responsive:true, maintainAspectRatio:false,
+            scales:{ y:{ beginAtZero:true, grid:{color:'#333'}, ticks:{callback:v=>'$'+v.toLocaleString()} }, x:{grid:{display:false}, ticks:{maxTicksLimit:12} } }
+        }
+    });
+    mk('c-rev-cat', {
+        type:'bar',
+        data:{ labels:RA.map(d=>d.action), datasets:[{
+            data:RA.map(d=>d.total),
+            backgroundColor:['#c9a96e','#5b8fb9','#c25b56','#6bab73','#9a9590','#d4a94e','#7a6f65','#5b8fb9'],
+            borderRadius:4, barPercentage:.5
+        }]},
+        options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+            scales:{ x:{ beginAtZero:true, grid:{color:'#333'}, ticks:{callback:v=>'$'+v.toLocaleString()} }, y:{grid:{display:false} } }
+        }
+    });
+}
+
+initOverview();
+</script>
+</body>
+</html>

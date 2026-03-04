@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Black Label Storage Operations Dashboard | Blacktail Companies</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+<style>
+:root {
+    --bg: #1e1e1e; --card: #2a2a2a; --card-border: #333;
+    --text: #e0dcd8; --muted: #9a9590; --heading: #e0dcd8;
+    --blue: #5b8fb9; --gold: #c9a96e; --coral: #c25b56;
+    --green: #6bab73; --yellow: #d4a94e; --red: #c25b56;
+    --gap: 16px; --radius: 8px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: 'Segoe UI','Helvetica Neue',sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
+.container { max-width:1200px; margin:0 auto; padding:24px; }
+
+/* Header */
+.header { margin-bottom:28px; }
+.header .company { font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--gold); margin-bottom:4px; }
+.header h1 { font-size:28px; font-weight:700; color:var(--heading); margin-bottom:4px; }
+.header .meta { font-size:13px; color:var(--muted); }
+
+/* Tabs */
+.tabs { display:flex; gap:0; margin-bottom:24px; border-bottom:1px solid var(--card-border); }
+.tab { padding:10px 20px; cursor:pointer; font-size:14px; font-weight:500; color:var(--muted); background:none; border:none; border-bottom:2px solid transparent; transition:all .2s; }
+.tab.active { color:var(--gold); border-bottom-color:var(--gold); }
+.tab:hover { color:var(--text); }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+
+/* KPI Cards */
+.kpi-row { display:grid; grid-template-columns:repeat(4,1fr); gap:var(--gap); margin-bottom:24px; }
+.kpi { background:var(--card); border:1px solid var(--card-border); border-radius:var(--radius); padding:20px 24px; }
+.kpi-label { font-size:11px; text-transform:uppercase; letter-spacing:1.2px; color:var(--muted); margin-bottom:6px; font-weight:600; }
+.kpi-value { font-size:28px; font-weight:800; line-height:1.2; }
+.kpi-sub { font-size:12px; color:var(--muted); margin-top:4px; }
+.kpi-value.blue { color:var(--blue); }
+.kpi-value.gold { color:var(--gold); }
+.kpi-value.coral { color:var(--coral); }
+.kpi-value.green { color:var(--green); }
+.kpi-value.red { color:var(--red); }
+.kpi-value.white { color:var(--heading); }
+
+/* Cards */
+.card { background:var(--card); border:1px solid var(--card-border); border-radius:var(--radius); padding:24px; margin-bottom:var(--gap); }
+.card h3 { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--heading); margin-bottom:16px; }
+.card-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:var(--gap); margin-bottom:var(--gap); }
+.card-grid-3 { display:grid; grid-template-columns:2fr 1fr; gap:var(--gap); margin-bottom:var(--gap); }
+
+/* Tables */
+table { width:100%; border-collapse:collapse; font-size:13px; }
+thead th { text-align:left; padding:10px 14px; border-bottom:1px solid var(--card-border); color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.5px; }
+tbody td { padding:10px 14px; border-bottom:1px solid rgba(51,51,51,.5); }
+tbody tr:last-child td { border-bottom:none; }
+tbody tr:hover { background:rgba(255,255,255,.03); }
+td.num { text-align:right; font-variant-numeric:tabular-nums; }
+.dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:8px; vertical-align:middle; }
+.dot-blue { background:var(--blue); }
+.dot-gold { background:var(--gold); }
+.dot-coral { background:var(--coral); }
+.dot-green { background:var(--green); }
+.dot-red { background:var(--red); }
+
+/* Badge */
+.badge { display:inline-block; padding:2px 10px; border-radius:12px; font-size:11px; font-weight:600; }
+.badge-green { background:rgba(107,171,115,.15); color:var(--green); }
+.badge-gold { background:rgba(201,169,110,.15); color:var(--gold); }
+.badge-red { background:rgba(194,91,86,.15); color:var(--coral); }
+
+/* Canvas */
+.chart-wrap { position:relative; height:280px; }
+
+/* Insights */
+.insight-card { background:var(--card); border:1px solid var(--card-border); border-radius:var(--radius); padding:28px; margin-bottom:var(--gap); }
+.insight-card h2 { font-size:18px; color:var(--gold); margin-bottom:16px; }
+.insight-card h3 { font-size:15px; color:var(--heading); margin-bottom:8px; text-transform:none; letter-spacing:0; font-weight:700; }
+.insight-card p { color:var(--muted); font-size:14px; line-height:1.7; margin-bottom:16px; }
+.impl-grid { display:grid; grid-template-columns:1fr 1fr; gap:var(--gap); margin-top:16px; }
+.impl-box { background:rgba(42,42,42,.8); border:1px solid var(--card-border); border-radius:var(--radius); padding:20px; }
+.impl-box h4 { font-size:12px; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px; font-weight:700; }
+.impl-box.revenue h4 { color:var(--green); }
+.impl-box.marketing h4 { color:var(--gold); }
+.impl-box.capex h4 { color:var(--coral); }
+.impl-box.data h4 { color:var(--blue); }
+.impl-box ul { padding-left:18px; color:var(--muted); font-size:13px; line-height:1.8; }
+.impl-box li { margin-bottom:4px; }
+
+/* Footer */
+footer { text-align:center; padding:20px; color:var(--muted); font-size:11px; margin-top:20px; letter-spacing:.5px; }
+
+@media(max-width:900px) {
+    .kpi-row { grid-template-columns:repeat(2,1fr); }
+    .card-grid,.card-grid-3,.impl-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+    <div class="company">Blacktail Companies</div>
+    <h1>Black Label Storage Operations Dashboard</h1>
+    <div class="meta">Report generated 2026-02-27 | 48 total units | 28,480 SF facility</div>
+</div>
+
+<div class="tabs">
+    <button class="tab active" onclick="showTab('overview')">Overview</button>
+    <button class="tab" onclick="showTab('occupancy')">Occupancy</button>
+    <button class="tab" onclick="showTab('revenue')">Revenue & Rent Roll</button>
+    <button class="tab" onclick="showTab('risk')">Collections & Risk</button>
+    <button class="tab" onclick="showTab('insights')">Key Insights</button>
+</div>
+
+<!-- ============ OVERVIEW ============ -->
+<div id="tab-overview" class="tab-content active">
+
+<div class="kpi-row">
+    <div class="kpi">
+        <div class="kpi-label">Physical Occupancy</div>
+        <div class="kpi-value gold">68.8%</div>
+        <div class="kpi-sub">33 of 48 units</div>
+    </div>
+    <div class="kpi">
+        <div class="kpi-label">Economic Occupancy</div>
+        <div class="kpi-value gold">60.3%</div>
+        <div class="kpi-sub">Revenue capture rate</div>
+    </div>
+    <div class="kpi">
+        <div class="kpi-label">Monthly Rent Roll</div>
+        <div class="kpi-value white">$13,995</div>
+        <div class="kpi-sub">vs $15,525 at rack rate</div>
+    </div>
+    <div class="kpi">
+        <div class="kpi-label">Vacant Units</div>
+        <div class="kpi-value coral">15</div>
+        <div class="kpi-sub">10 on waiting list</div>
+    </div>
+</div>
+
+<div class="card-grid-3">
+    <div class="card">
+        <h3>Occupancy Trend (2023–2026)</h3>
+        <div class="chart-wrap"><canvas id="c-occ-trend"></canvas></div>
+    </div>
+    <div class="card">
+        <h3>Facility Summary</h3>
+        <table>
+            <thead><tr><th></th><th>Metric</th><th class="num">Value</th></tr></thead>
+            <tbody>
+                <tr><td><span class="dot dot-blue"></span></td><td>Total Units</td><td class="num"><strong>48</strong></td></tr>
+                <tr><td><span class="dot dot-green"></span></td><td>Occupied</td><td class="num"><strong>33</strong></td></tr>
+                <tr><td><span class="dot dot-red"></span></td><td>Vacant</td><td class="num"><strong>15</strong></td></tr>
+                <tr><td><span class="dot dot-gold"></span></td><td>Total SF</td><td class="num"><strong>28,480</strong></td></tr>
+                <tr><td><span class="dot dot-gold"></span></td><td>Occupied SF</td><td class="num"><strong>18,840</strong></td></tr>
+                <tr><td><span class="dot dot-coral"></span></td><td>Rate Variance</td><td class="num"><strong>$1,530</strong></td></tr>
+                <tr><td><span class="dot dot-coral"></span></td><td>Past Due</td><td class="num"><strong>$1,675</strong></td></tr>
+                <tr><td><span class="dot dot-blue"></span></td><td>Waiting List</td><td class="num"><strong>10</strong></td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card-grid">
+    <div class="card">
+        <h3>Occupancy by Unit Type</h3>
+        <div class="chart-wrap"><canvas id="c-occ-type"></canvas></div>
+    </div>
+    <div class="card">
+        <h3>Unit Status Breakdown</h3>
+        <div class="chart-wrap"><canvas id="c-status"></canvas></div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Management Activity Summary</h3>
+    <table>
+        <thead><tr><th>Metric</th><th class="num">Today</th><th class="num">This Week</th><th class="num">This Month</th><th class="num">This Year</th></tr></thead>
+        <tbody><tr><td><strong>ACH</strong></td><td class="num">$0.00</td><td class="num">$0.00</td><td class="num">$625.00</td><td class="num">$1,250.00</td></tr><tr><td><strong>Credit Card</strong></td><td class="num">$0.00</td><td class="num">$1,095.00</td><td class="num">$11,303.57</td><td class="num">$21,509.57</td></tr><tr><td><strong>One-time Credit Card</strong></td><td class="num">$0.00</td><td class="num">$0.00</td><td class="num">$370.00</td><td class="num">$1,197.00</td></tr><tr><td><strong>Move Ins</strong></td><td class="num">0</td><td class="num">0</td><td class="num">1</td><td class="num">4</td></tr><tr><td><strong>Move Outs</strong></td><td class="num">0</td><td class="num">0</td><td class="num">3</td><td class="num">5</td></tr><tr><td><strong>Deposit</strong></td><td class="num">$0.00</td><td class="num">$0.00</td><td class="num">$172.50</td><td class="num">$172.50</td></tr><tr><td><strong>Late Fee</strong></td><td class="num">$0.00</td><td class="num">$0.00</td><td class="num">$150.00</td><td class="num">$225.00</td></tr><tr><td><strong>Prorated Tenant Protection Fee</strong></td><td class="num">$0.00</td><td class="num">$0.00</td><td class="num">$4.71</td><td class="num">$4.71</td></tr><tr><td><strong>Rent</strong></td><td class="num">$0.00</td><td class="num">$1,095.00</td><td class="num">$11,917.36</td><td class="num">$23,384.36</td></tr><tr><td><strong>Reservation</strong></td><td class="num">$0.00</td><td class="num">$0.00</td><td class="num">$0.00</td><td class="num">$50.00</td></tr><tr><td><strong>Tenant Protection Fee</strong></td><td class="num">$0.00</td><td class="num">$0.00</td><td class="num">$54.00</td><td class="num">$120.00</td></tr></tbody></table></div>
+</div>
+
+<!-- ============ OCCUPANCY ============ -->
+<div id="tab-occupancy" class="tab-content">
+
+<div class="kpi-row">
+    <div class="kpi"><div class="kpi-label">Best Performing</div><div class="kpi-value green">12 x 40</div><div class="kpi-sub">100.0% occupied</div></div>
+    <div class="kpi"><div class="kpi-label">Needs Attention</div><div class="kpi-value coral">14 x 50</div><div class="kpi-sub">44.44% occupied</div></div>
+    <div class="kpi"><div class="kpi-label">Occupied SF</div><div class="kpi-value white">18,840</div><div class="kpi-sub">of 28,480 total</div></div>
+    <div class="kpi"><div class="kpi-label">Avg Revenue / Unit</div><div class="kpi-value gold">$424.09</div><div class="kpi-sub">$46.36 below rack avg</div></div>
+</div>
+
+<div class="card-grid">
+    <div class="card">
+        <h3>Economic vs Area Occupancy Over Time</h3>
+        <div class="chart-wrap"><canvas id="c-econ-area"></canvas></div>
+    </div>
+    <div class="card">
+        <h3>Occupied Units Over Time</h3>
+        <div class="chart-wrap"><canvas id="c-units-time"></canvas></div>
+    </div>
+</div>
+
+<div class="card">
+<h3>Occupancy by Unit Type</h3>
+<table>
+<thead><tr><th>Size</th><th class="num">Units</th><th class="num">Occupied</th><th class="num">Vacant</th><th class="num">SF/Unit</th><th class="num">Rack Rate</th><th class="num">Avg Actual</th><th class="num">Physical Occ</th><th class="num">Econ Occ</th></tr></thead>
+<tbody><tr><td><strong>12 x 40</strong></td><td class="num">1</td><td class="num">1</td><td class="num">0</td><td class="num">480</td><td class="num">$410.00</td><td class="num">$190.00</td><td class="num"><span class="badge badge-green">100.0%</span></td><td class="num">46.34%</td></tr><tr><td><strong>17 x 30</strong></td><td class="num">7</td><td class="num">6</td><td class="num">1</td><td class="num">510</td><td class="num">$430.00</td><td class="num">$401.58</td><td class="num"><span class="badge badge-green">85.71%</span></td><td class="num">80.05%</td></tr><tr><td><strong>14 x 30</strong></td><td class="num">9</td><td class="num">7</td><td class="num">2</td><td class="num">420</td><td class="num">$370.00</td><td class="num">$357.93</td><td class="num"><span class="badge badge-gold">77.78%</span></td><td class="num">75.24%</td></tr><tr><td><strong>14 x 40</strong></td><td class="num">15</td><td class="num">11</td><td class="num">4</td><td class="num">560</td><td class="num">$475.00</td><td class="num">$412.73</td><td class="num"><span class="badge badge-gold">73.33%</span></td><td class="num">63.72%</td></tr><tr><td><strong>17 x 50</strong></td><td class="num">7</td><td class="num">4</td><td class="num">3</td><td class="num">850</td><td class="num">$650.00</td><td class="num">$572.50</td><td class="num"><span class="badge badge-red">57.14%</span></td><td class="num">50.33%</td></tr><tr><td><strong>14 x 50</strong></td><td class="num">9</td><td class="num">4</td><td class="num">5</td><td class="num">700</td><td class="num">$530.00</td><td class="num">$515.00</td><td class="num"><span class="badge badge-red">44.44%</span></td><td class="num">43.19%</td></tr></tbody></table></div>
+
+<div class="card-grid">
+<div class="card">
+<h3>Vacant Units Available</h3>
+<table>
+<thead><tr><th>Type</th><th class="num">SF</th><th class="num">Available</th><th class="num">Rate</th><th>Unit Numbers</th></tr></thead>
+<tbody><tr><td><strong>14 x 30</strong></td><td class="num">420</td><td class="num">2</td><td class="num">$370.00</td><td>31  30 </td></tr><tr><td><strong>17 x 30</strong></td><td class="num">510</td><td class="num">1</td><td class="num">$430.00</td><td>22 </td></tr><tr><td><strong>14 x 40</strong></td><td class="num">560</td><td class="num">4</td><td class="num">$475.00</td><td>47  46 (Devin Hoesing - 3/16/2026) 36  39 </td></tr><tr><td><strong>14 x 50</strong></td><td class="num">700</td><td class="num">5</td><td class="num">$530.00</td><td>2  11  13  15  16 </td></tr><tr><td><strong>17 x 50</strong></td><td class="num">850</td><td class="num">3</td><td class="num">$650.00</td><td>8  9  10 </td></tr></tbody></table></div>
+<div class="card">
+<h3>Waiting List</h3>
+<table>
+<thead><tr><th>Name</th><th>Requested Type</th><th class="num">Available</th><th>Date Added</th></tr></thead>
+<tbody><tr><td><strong>Thomas Johnson</strong></td><td>12 x 40</td><td class="num">0</td><td>11/19/2024</td></tr><tr><td><strong>Donald Hussey</strong></td><td>14 x 30</td><td class="num">2</td><td>1/25/2025</td></tr><tr><td><strong>Brady krusemark</strong></td><td>14 x 30</td><td class="num">2</td><td>3/27/2025</td></tr><tr><td><strong>Rachel Leerssen </strong></td><td>14 x 30</td><td class="num">2</td><td>3/31/2025</td></tr><tr><td><strong>SHERRY ALLEN</strong></td><td>14 x 30</td><td class="num">2</td><td>4/16/2025</td></tr><tr><td><strong>Ric Todd</strong></td><td>12 x 40</td><td class="num">0</td><td>8/23/2025</td></tr><tr><td><strong>Kenneth Derheim</strong></td><td>14 x 30</td><td class="num">2</td><td>9/4/2025</td></tr><tr><td><strong>Kenneth Derheim</strong></td><td>14 x 30</td><td class="num">2</td><td>9/4/2025</td></tr><tr><td><strong>Kenneth Derheim</strong></td><td>14 x 30</td><td class="num">2</td><td>9/4/2025</td></tr><tr><td><strong>Mitch Schroeder</strong></td><td>14 x 30</td><td class="num">2</td><td>11/21/2025</td></tr></tbody></table></div>
+</div>
+</div>
+
+<!-- ============ REVENUE ============ -->
+<div id="tab-revenue" class="tab-content">
+
+<div class="kpi-row">
+    <div class="kpi"><div class="kpi-label">Monthly Rent Roll</div><div class="kpi-value white">$13,995</div><div class="kpi-sub">33 active tenants</div></div>
+    <div class="kpi"><div class="kpi-label">Rack Rate Total</div><div class="kpi-value gold">$15,525</div><div class="kpi-sub">Potential at full rate</div></div>
+    <div class="kpi"><div class="kpi-label">Revenue Capture</div><div class="kpi-value red">60.3%</div><div class="kpi-sub">Actual vs rack rate</div></div>
+    <div class="kpi"><div class="kpi-label">Discount Leakage</div><div class="kpi-value coral">$1,530</div><div class="kpi-sub">/month below rack</div></div>
+</div>
+
+<div class="card-grid">
+    <div class="card">
+        <h3>Monthly Revenue Trend</h3>
+        <div class="chart-wrap"><canvas id="c-rev-trend"></canvas></div>
+    </div>
+    <div class="card">
+        <h3>Revenue by Category</h3>
+        <div class="chart-wrap"><canvas id="c-rev-cat"></canvas></div>
+    </div>
+</div>
+
+<div class="card">
+<h3>Rent Roll — All Tenants</h3>
+<table>
+<thead><tr><th>Unit</th><th>Type</th><th>Tenant</th><th>Move-In</th><th class="num">Rack Rate</th><th class="num">Actual Rate</th><th class="num">Variance</th><th class="num">Balance</th><th>Paid To</th></tr></thead>
+<tbody><tr><td>4</td><td>17 x 50</td><td><strong>Ryan O Citrowske</strong></td><td>9/26/2025</td><td class="num">$650.00</td><td class="num">$390.00</td><td class="num"><span class="badge badge-red">$260.00</span></td><td class="num">$0.00</td><td>4/1/2026</td></tr><tr><td>33</td><td>12 x 40</td><td><strong>Kenneth Derheim</strong></td><td>8/19/2025</td><td class="num">$410.00</td><td class="num">$190.00</td><td class="num"><span class="badge badge-red">$220.00</span></td><td class="num">$190.00</td><td>3/1/2026</td></tr><tr><td>42</td><td>14 x 40</td><td><strong>John Harris, Prairie Public</strong></td><td>9/18/2025</td><td class="num">$475.00</td><td class="num">$300.00</td><td class="num"><span class="badge badge-red">$175.00</span></td><td class="num">$664.50</td><td>3/1/2026</td></tr><tr><td>44</td><td>14 x 40</td><td><strong>MARI BETH BETH REITMEIER</strong></td><td>9/29/2025</td><td class="num">$475.00</td><td class="num">$300.00</td><td class="num"><span class="badge badge-red">$175.00</span></td><td class="num">$0.00</td><td>4/1/2026</td></tr><tr><td>38</td><td>14 x 40</td><td><strong>Charles E. Splitt</strong></td><td>9/8/2025</td><td class="num">$475.00</td><td class="num">$350.00</td><td class="num"><span class="badge badge-red">$125.00</span></td><td class="num">$350.00</td><td>3/1/2026</td></tr><tr><td>35</td><td>14 x 40</td><td><strong>Greg Miller</strong></td><td>10/8/2024</td><td class="num">$475.00</td><td class="num">$405.00</td><td class="num"><span class="badge badge-gold">$70.00</span></td><td class="num">$0.00</td><td>4/1/2026</td></tr><tr><td>20</td><td>17 x 30</td><td><strong>John Harris, Prairie Public</strong></td><td>12/9/2024</td><td class="num">$430.00</td><td class="num">$364.50</td><td class="num"><span class="badge badge-gold">$65.50</span></td><td class="num">$664.50</td><td>3/1/2026</td></tr><tr><td>12</td><td>14 x 50</td><td><strong>Don Brendsel </strong></td><td>8/1/2024</td><td class="num">$530.00</td><td class="num">$465.00</td><td class="num"><span class="badge badge-gold">$65.00</span></td><td class="num">$0.00</td><td>9/1/2026</td></tr><tr><td>40</td><td>14 x 40</td><td><strong>Lori Deery</strong></td><td>7/31/2025</td><td class="num">$475.00</td><td class="num">$410.00</td><td class="num"><span class="badge badge-gold">$65.00</span></td><td class="num">$410.00</td><td>3/1/2026</td></tr><tr><td>17</td><td>14 x 30</td><td><strong>Terry Brown</strong></td><td>5/21/2024</td><td class="num">$370.00</td><td class="num">$310.50</td><td class="num"><span class="badge badge-gold">$59.50</span></td><td class="num">$310.50</td><td>3/1/2026</td></tr><tr><td>26</td><td>17 x 30</td><td><strong>Kelly Todd</strong></td><td>8/25/2025</td><td class="num">$430.00</td><td class="num">$375.00</td><td class="num"><span class="badge badge-gold">$55.00</span></td><td class="num">$375.00</td><td>3/1/2026</td></tr><tr><td>5</td><td>17 x 50</td><td><strong>Douglas Zeis</strong></td><td>5/20/2024</td><td class="num">$650.00</td><td class="num">$625.00</td><td class="num"><span class="badge badge-gold">$25.00</span></td><td class="num">$625.00</td><td>3/1/2026</td></tr><tr><td>6</td><td>17 x 50</td><td><strong>Tristan A Olson</strong></td><td>7/2/2024</td><td class="num">$650.00</td><td class="num">$625.00</td><td class="num"><span class="badge badge-gold">$25.00</span></td><td class="num">$625.00</td><td>3/1/2026</td></tr><tr><td>14</td><td>14 x 50</td><td><strong>Jan M Eliassen</strong></td><td>10/15/2024</td><td class="num">$530.00</td><td class="num">$505.00</td><td class="num"><span class="badge badge-gold">$25.00</span></td><td class="num">$505.00</td><td>3/1/2026</td></tr><tr><td>18</td><td>14 x 30</td><td><strong>Kurt Kramer</strong></td><td>9/23/2024</td><td class="num">$370.00</td><td class="num">$345.00</td><td class="num"><span class="badge badge-gold">$25.00</span></td><td class="num">$387.00</td><td>3/1/2026</td></tr><tr><td>24</td><td>17 x 30</td><td><strong>Scott Westbrook</strong></td><td>2/10/2024</td><td class="num">$430.00</td><td class="num">$405.00</td><td class="num"><span class="badge badge-gold">$25.00</span></td><td class="num">$405.00</td><td>3/1/2026</td></tr><tr><td>25</td><td>17 x 30</td><td><strong>Horsch Lucas</strong></td><td>11/23/2024</td><td class="num">$430.00</td><td class="num">$405.00</td><td class="num"><span class="badge badge-gold">$25.00</span></td><td class="num">$405.00</td><td>3/1/2026</td></tr><tr><td>34</td><td>14 x 40</td><td><strong>Kasey K Calahan</strong></td><td>10/3/2023</td><td class="num">$475.00</td><td class="num">$450.00</td><td class="num"><span class="badge badge-gold">$25.00</span></td><td class="num">$450.00</td><td>3/1/2026</td></tr><tr><td>37</td><td>14 x 40</td><td><strong>Tamara Randall</strong></td><td>6/14/2024</td><td class="num">$475.00</td><td class="num">$450.00</td><td class="num"><span class="badge badge-gold">$25.00</span></td><td class="num">$450.00</td><td>3/1/2026</td></tr><tr><td>48</td><td>14 x 40</td><td><strong>Sheriff Sonko</strong></td><td>11/6/2023</td><td class="num">$475.00</td><td class="num">$450.00</td><td class="num"><span class="badge badge-gold">$25.00</span></td><td class="num">$1,675.00</td><td>12/1/2025</td></tr><tr><td>1</td><td>14 x 50</td><td><strong>Chris Partridge</strong></td><td>2/1/2026</td><td class="num">$530.00</td><td class="num">$530.00</td><td class="num"><span class="badge badge-green">$0.00</span></td><td class="num">$530.00</td><td>nan</td></tr><tr><td>7</td><td>17 x 50</td><td><strong>Marc L Carter</strong></td><td>10/3/2025</td><td class="num">$650.00</td><td class="num">$650.00</td><td class="num"><span class="badge badge-green">$0.00</span></td><td class="num">$650.00</td><td>3/1/2026</td></tr><tr><td>19</td><td>14 x 30</td><td><strong>Tanner hennen</strong></td><td>9/17/2025</td><td class="num">$370.00</td><td class="num">$370.00</td><td class="num"><span class="badge badge-green">$0.00</span></td><td class="num">$382.00</td><td>3/1/2026</td></tr><tr><td>21</td><td>17 x 30</td><td><strong>Zachary E Parsons</strong></td><td>11/28/2025</td><td class="num">$430.00</td><td class="num">$430.00</td><td class="num"><span class="badge badge-green">$0.00</span></td><td class="num">$430.00</td><td>3/1/2026</td></tr><tr><td>23</td><td>17 x 30</td><td><strong>Scott b Fluge </strong></td><td>3/8/2025</td><td class="num">$430.00</td><td class="num">$430.00</td><td class="num"><span class="badge badge-green">$0.00</span></td><td class="num">$430.00</td><td>3/1/2026</td></tr><tr><td>27</td><td>14 x 30</td><td><strong>Benjamin Blanchard</strong></td><td>10/7/2025</td><td class="num">$370.00</td><td class="num">$370.00</td><td class="num"><span class="badge badge-green">$0.00</span></td><td class="num">$370.00</td><td>3/1/2026</td></tr><tr><td>28</td><td>14 x 30</td><td><strong>Anahita Narimani</strong></td><td>7/27/2025</td><td class="num">$370.00</td><td class="num">$370.00</td><td class="num"><span class="badge badge-green">$0.00</span></td><td class="num">$370.00</td><td>3/1/2026</td></tr><tr><td>29</td><td>14 x 30</td><td><strong>Chris Ahlers</strong></td><td>7/29/2025</td><td class="num">$370.00</td><td class="num">$370.00</td><td class="num"><span class="badge badge-green">$0.00</span></td><td class="num">$0.00</td><td>3/1/2026</td></tr><tr><td>32</td><td>14 x 30</td><td><strong>Brandon Hegseth</strong></td><td>2/18/2026</td><td class="num">$370.00</td><td class="num">$370.00</td><td class="num"><span class="badge badge-green">$0.00</span></td><td class="num">$382.00</td><td>3/1/2026</td></tr><tr><td>41</td><td>14 x 40</td><td><strong>Danny E Priebe</strong></td><td>4/11/2025</td><td class="num">$475.00</td><td class="num">$475.00</td><td class="num"><span class="badge badge-green">$0.00</span></td><td class="num">$475.00</td><td>3/1/2026</td></tr><tr><td>43</td><td>14 x 40</td><td><strong>Giang V Vo</strong></td><td>8/21/2025</td><td class="num">$475.00</td><td class="num">$475.00</td><td class="num"><span class="badge badge-green">$0.00</span></td><td class="num">$475.00</td><td>3/1/2026</td></tr><tr><td>45</td><td>14 x 40</td><td><strong>David Joel Johnson</strong></td><td>10/17/2025</td><td class="num">$475.00</td><td class="num">$475.00</td><td class="num"><span class="badge badge-green">$0.00</span></td><td class="num">$475.00</td><td>3/1/2026</td></tr><tr><td>3</td><td>14 x 50</td><td><strong>Kevin Wayne Volk</strong></td><td>1/29/2024</td><td class="num">$530.00</td><td class="num">$560.00</td><td class="num"><span class="badge badge-green">$-30.00</span></td><td class="num">$560.00</td><td>3/1/2026</td></tr></tbody></table></div>
+
+<div class="card">
+<h3>Biggest Discounts from Rack Rate</h3>
+<table>
+<thead><tr><th>Unit</th><th>Tenant</th><th class="num">Rack Rate</th><th class="num">Actual</th><th class="num">Monthly Variance</th><th class="num">Annual Impact</th></tr></thead>
+<tbody><tr><td>4</td><td><strong>Ryan O Citrowske</strong></td><td class="num">$650.00</td><td class="num">$390.00</td><td class="num"><span class="badge badge-red">$260.00</span></td><td class="num" style="color:var(--coral)"><strong>$3,120.00</strong></td></tr><tr><td>33</td><td><strong>Kenneth Derheim</strong></td><td class="num">$410.00</td><td class="num">$190.00</td><td class="num"><span class="badge badge-red">$220.00</span></td><td class="num" style="color:var(--coral)"><strong>$2,640.00</strong></td></tr><tr><td>42</td><td><strong>John Harris, Prairie Public</strong></td><td class="num">$475.00</td><td class="num">$300.00</td><td class="num"><span class="badge badge-red">$175.00</span></td><td class="num" style="color:var(--coral)"><strong>$2,100.00</strong></td></tr><tr><td>44</td><td><strong>MARI BETH BETH REITMEIER</strong></td><td class="num">$475.00</td><td class="num">$300.00</td><td class="num"><span class="badge badge-red">$175.00</span></td><td class="num" style="color:var(--coral)"><strong>$2,100.00</strong></td></tr><tr><td>38</td><td><strong>Charles E. Splitt</strong></td><td class="num">$475.00</td><td class="num">$350.00</td><td class="num"><span class="badge badge-red">$125.00</span></td><td class="num" style="color:var(--coral)"><strong>$1,500.00</strong></td></tr></tbody></table></div>
+</div>
+
+<!-- ============ COLLECTIONS ============ -->
+<div id="tab-risk" class="tab-content">
+
+<div class="kpi-row">
+    <div class="kpi"><div class="kpi-label">Total Past Due</div><div class="kpi-value red">$1,675</div><div class="kpi-sub">Outstanding balances</div></div>
+    <div class="kpi"><div class="kpi-label">Tenants in Collections</div><div class="kpi-value coral">1</div><div class="kpi-sub">Active collection cases</div></div>
+    <div class="kpi"><div class="kpi-label">Repeat Failed Payments</div><div class="kpi-value gold">20</div><div class="kpi-sub">3+ failures</div></div>
+    <div class="kpi"><div class="kpi-label">Total Decline Events</div><div class="kpi-value white">270</div><div class="kpi-sub">All-time payment failures</div></div>
+</div>
+
+<div class="card">
+<h3>Collections — Past Due Accounts</h3>
+<table>
+<thead><tr><th>Tenant</th><th class="num">Balance</th><th class="num">Days Behind</th><th>Lockout</th><th>Auction Date</th><th>Phone</th><th>Email</th></tr></thead>
+<tbody><tr><td><strong>Sheriff Sonko</strong></td><td class="num" style="color:var(--coral)"><strong>$1,675.00</strong></td><td class="num">57</td><td>Yes</td><td>2026-02-19</td><td>(701) 405-6059</td><td>sstsonko@gmail.com</td></tr></tbody></table></div>
+
+<div class="card">
+<h3>Failed & Declined Payments — Repeat Offenders</h3>
+<table>
+<thead><tr><th>Tenant</th><th class="num">Failures</th><th class="num">Total Amount</th><th>Last Attempt</th><th>Decline Reason</th></tr></thead>
+<tbody><tr><td><strong>Jimmy L Morton</strong></td><td class="num"><span class="badge badge-red">30</span></td><td class="num">$14,418.39</td><td>2025-07-09</td><td style="font-size:12px;color:var(--muted)">Transaction declined: Insufficient Funds</td></tr><tr><td><strong>Jan Mark Swenson</strong></td><td class="num"><span class="badge badge-red">25</span></td><td class="num">$9,355.00</td><td>2025-10-01</td><td style="font-size:12px;color:var(--muted)">Transaction declined: Invalid Account Number</td></tr><tr><td><strong>Manuel Perez</strong></td><td class="num"><span class="badge badge-red">23</span></td><td class="num">$9,305.00</td><td>2025-10-01</td><td style="font-size:12px;color:var(--muted)">Transaction declined: Insufficient Funds</td></tr><tr><td><strong>Sheriff Sonko</strong></td><td class="num"><span class="badge badge-red">21</span></td><td class="num">$10,875.00</td><td>2026-02-01</td><td style="font-size:12px;color:var(--muted)">Transaction declined: Generic Decline</td></tr><tr><td><strong>Christopher Edwardson</strong></td><td class="num"><span class="badge badge-red">20</span></td><td class="num">$6,858.02</td><td>2025-02-18</td><td style="font-size:12px;color:var(--muted)">R01: Insufficient Funds</td></tr><tr><td><strong>Donovan Kinslow</strong></td><td class="num"><span class="badge badge-red">20</span></td><td class="num">$8,101.57</td><td>2025-07-01</td><td style="font-size:12px;color:var(--muted)">Transaction declined: Invalid Merchant</td></tr><tr><td><strong>Joshua Nunez</strong></td><td class="num"><span class="badge badge-red">20</span></td><td class="num">$15,212.57</td><td>2024-12-30</td><td style="font-size:12px;color:var(--muted)">Transaction declined: Decline - Re-try Transaction</td></tr><tr><td><strong>Tristan A Olson</strong></td><td class="num"><span class="badge badge-red">16</span></td><td class="num">$9,892.34</td><td>2025-12-01</td><td style="font-size:12px;color:var(--muted)">Transaction declined: Insufficient Funds</td></tr><tr><td><strong>Mesud Heco</strong></td><td class="num"><span class="badge badge-red">12</span></td><td class="num">$4,712.50</td><td>2024-09-01</td><td style="font-size:12px;color:var(--muted)">Transaction declined: The account was closed</td></tr><tr><td><strong>Anahita Narimani</strong></td><td class="num"><span class="badge badge-red">9</span></td><td class="num">$3,330.00</td><td>2026-02-01</td><td style="font-size:12px;color:var(--muted)">Transaction declined: Decline - Re-try Transaction</td></tr><tr><td><strong>Misty Streed</strong></td><td class="num"><span class="badge badge-red">9</span></td><td class="num">$2,470.00</td><td>2026-02-01</td><td style="font-size:12px;color:var(--muted)">Transaction declined: Soft Decline - Blocked by cardholder/contact car</td></tr><tr><td><strong>Akeem Rashimee Blake </strong></td><td class="num"><span class="badge badge-red">8</span></td><td class="num">$4,240.00</td><td>2026-02-01</td><td style="font-size:12px;color:var(--muted)">Transaction declined: Decline - Re-try Transaction</td></tr><tr><td><strong>Ben Fredricks </strong></td><td class="num"><span class="badge badge-red">8</span></td><td class="num">$2,856.00</td><td>2025-07-01</td><td style="font-size:12px;color:var(--muted)">Transaction declined: The account was closed</td></tr><tr><td><strong>Danny E Priebe</strong></td><td class="num"><span class="badge badge-red">8</span></td><td class="num">$3,930.00</td><td>2026-02-01</td><td style="font-size:12px;color:var(--muted)">Transaction declined: Decline - Re-try Transaction</td></tr><tr><td><strong>Tamara Randall</strong></td><td class="num"><span class="badge badge-red">8</span></td><td class="num">$3,750.00</td><td>2025-09-02</td><td style="font-size:12px;color:var(--muted)">Transaction declined: Insufficient Funds</td></tr><tr><td><strong>Jennifer Larson</strong></td><td class="num"><span class="badge badge-red">7</span></td><td class="num">$4,350.00</td><td>2024-11-01</td><td style="font-size:12px;color:var(--muted)">R01: Insufficient Funds</td></tr><tr><td><strong>Kevin Wayne Volk</strong></td><td class="num"><span class="badge badge-red">7</span></td><td class="num">$3,920.00</td><td>2026-02-01</td><td style="font-size:12px;color:var(--muted)">Transaction declined: Insufficient Funds</td></tr><tr><td><strong>NAGAWO  AGO</strong></td><td class="num"><span class="badge badge-red">7</span></td><td class="num">$6,402.50</td><td>2024-05-21</td><td style="font-size:12px;color:var(--muted)">Transaction declined: Suspected Fraud</td></tr><tr><td><strong>Janci Kaiawe</strong></td><td class="num"><span class="badge badge-red">6</span></td><td class="num">$3,623.80</td><td>2024-11-13</td><td style="font-size:12px;color:var(--muted)">R01: Insufficient Funds</td></tr><tr><td><strong>Jory M Iwen</strong></td><td class="num"><span class="badge badge-red">6</span></td><td class="num">$2,932.26</td><td>2024-11-01</td><td style="font-size:12px;color:var(--muted)">R01: Insufficient Funds</td></tr></tbody></table></div>
+</div>
+
+<!-- ============ KEY INSIGHTS ============ -->
+<div id="tab-insights" class="tab-content">
+
+<div class="insight-card">
+<h2>Portfolio-Level Findings</h2>
+
+<h3>1. Occupancy Is Concentrated in Smaller Units — Larger Units Are the Drag</h3>
+<p>The 12 x 40 units lead the facility at 100.0% physical occupancy, while the 14 x 50 units sit at just 44.44%. Of the 15 vacant units, the 14x50 size alone accounts for 5 — more than a third of all vacancy. This isn't a demand problem across the board; it's a product-specific absorption issue with the largest (and most expensive) units.</p>
+
+<h3>2. Economic Occupancy Lags Physical by 8.5 Points — Discounting Is Real</h3>
+<p>At 68.8% physical and 60.3% economic occupancy, Black Label is collecting roughly $13,995/month against a rack-rate potential of $15,525. That's $1,530/month ($18,360/year) in discount leakage. The top 5 discounted tenants alone account for a significant portion of this gap, with some paying $175-$260/month below rack rate.</p>
+
+<h3>3. The Facility Has Steadily Climbed From Zero to ~65% Since Opening</h3>
+<p>Black Label opened in mid-2023 and has been on a gradual lease-up trajectory. Economic occupancy rose from 12.7% in September 2023 to a peak of ~69% in October 2024, then softened through early 2025 before recovering to the mid-60s. The facility hasn't yet hit the 80%+ stabilization threshold that would signal mature operations.</p>
+
+<h3>4. Collections Exposure Is Manageable but Concentrated</h3>
+<p>Total past-due balance is $1,675 across 1 tenant(s). The failed payment log shows 20 tenants with 3+ payment failures — these are the chronic cases that need proactive intervention, not just automated retries.</p>
+</div>
+
+<div class="insight-card">
+<h2>Operational Implications</h2>
+<div class="impl-grid">
+    <div class="impl-box revenue">
+        <h4>Revenue Optimization</h4>
+        <ul>
+            <li>Review all tenants paying >$50/month below rack rate — especially those on promotional rates that haven't been stepped up</li>
+            <li>The 14x50 and 17x50 units at $530-$650/month may be priced too high for current demand. Consider a limited-time rate to fill the 8 vacant large units</li>
+            <li>Annual rate increases should target tenants who've been in place 12+ months and are paying below standard</li>
+        </ul>
+    </div>
+    <div class="impl-box marketing">
+        <h4>Marketing & Leasing</h4>
+        <ul>
+            <li>10 people on the waiting list — mostly for 14x30 units (2 available). This signals strong demand for smaller sizes</li>
+            <li>Focus marketing spend on the 14x50 and 17x50 products where vacancy is highest</li>
+            <li>Consider listing large units on RV/boat storage platforms to capture seasonal demand</li>
+        </ul>
+    </div>
+    <div class="impl-box capex">
+        <h4>Risk Management</h4>
+        <ul>
+            <li>Sheriff Sonko's $1,675 balance with an auction date of 2/19 needs immediate resolution</li>
+            <li>Tenants with 3+ payment failures need direct outreach — auto-retries aren't solving the problem</li>
+            <li>Monitor the 12x40 unit at $190/month (Kenneth Derheim) — that's 54% below rack rate of $410</li>
+        </ul>
+    </div>
+    <div class="impl-box data">
+        <h4>Data Gaps to Address</h4>
+        <ul>
+            <li>No move-out reason codes — understanding why tenants leave would inform retention strategy</li>
+            <li>No vacancy days tracking between tenants — critical for calculating true revenue loss per turn</li>
+            <li>Budget vs. actual comparison needs monthly P&L data not currently in these reports</li>
+        </ul>
+    </div>
+</div>
+</div>
+
+<div class="insight-card" style="border-left:3px solid var(--gold);padding-left:28px">
+<h2 style="font-size:16px">Bottom Line</h2>
+<p style="font-size:14px;line-height:1.8;color:var(--text)">Black Label is in active lease-up with 68.8% physical occupancy, trending upward from zero at opening 2.5 years ago. The core challenge isn't demand — smaller units have waitlists — it's product-market fit for the larger 14x50 and 17x50 garage condos, which represent 8 of 15 vacant units. Closing the $1,530/month discount gap and filling the large-unit vacancy are the two highest-leverage moves. Together, they represent approximately $73,560/year in incremental revenue potential.</p>
+</div>
+
+</div>
+
+<footer>Black Label Storage Operations Dashboard | Blacktail Companies | Generated February 27, 2026 | Prepared by Alter Ego</footer>
+</div>
+
+<script>
+Chart.defaults.color = '#9a9590';
+Chart.defaults.borderColor = '#333';
+Chart.defaults.font.family = "'Segoe UI','Helvetica Neue',sans-serif";
+Chart.defaults.font.size = 12;
+Chart.defaults.plugins.legend.display = false;
+
+const charts = {};
+function mk(id, cfg) {
+    if (charts[id]) charts[id].destroy();
+    charts[id] = new Chart(document.getElementById(id), cfg);
+}
+
+function showTab(name) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-'+name).classList.add('active');
+    event.target.classList.add('active');
+    if (name === 'overview') initOverview();
+    if (name === 'occupancy') initOccupancy();
+    if (name === 'revenue') initRevenue();
+}
+
+const H = [{"month": "2023-09", "econ_occ": 12.72, "area_occ": 12.78, "occ_units": 6.0, "total_units": 47.0, "occ_price": 2915.0, "total_price": 22915.0}, {"month": "2023-10", "econ_occ": 26.1, "area_occ": 26.3, "occ_units": 13.0, "total_units": 47.0, "occ_price": 5980.0, "total_price": 22915.0}, {"month": "2023-11", "econ_occ": 37.62, "area_occ": 37.75, "occ_units": 20.0, "total_units": 47.0, "occ_price": 8620.0, "total_price": 22915.0}, {"month": "2023-12", "econ_occ": 39.12, "area_occ": 39.22, "occ_units": 21.0, "total_units": 47.0, "occ_price": 8965.0, "total_price": 22915.0}, {"month": "2024-01", "econ_occ": 47.0, "area_occ": 47.09, "occ_units": 25.0, "total_units": 47.0, "occ_price": 10770.0, "total_price": 22915.0}, {"month": "2024-02", "econ_occ": 52.5, "area_occ": 52.63, "occ_units": 28.0, "total_units": 47.0, "occ_price": 12030.0, "total_price": 22915.0}, {"month": "2024-03", "econ_occ": 44.53, "area_occ": 45.19, "occ_units": 24.0, "total_units": 47.0, "occ_price": 10205.0, "total_price": 22915.0}, {"month": "2024-04", "econ_occ": 41.24, "area_occ": 42.45, "occ_units": 23.0, "total_units": 47.0, "occ_price": 9450.0, "total_price": 22915.0}, {"month": "2024-05", "econ_occ": 54.97, "area_occ": 54.6, "occ_units": 29.0, "total_units": 48.0, "occ_price": 12090.5, "total_price": 21995.0}, {"month": "2024-06", "econ_occ": 56.11, "area_occ": 55.13, "occ_units": 29.0, "total_units": 48.0, "occ_price": 12340.5, "total_price": 21995.0}, {"month": "2024-07", "econ_occ": 59.49, "area_occ": 61.55, "occ_units": 31.0, "total_units": 48.0, "occ_price": 13085.5, "total_price": 21995.0}, {"month": "2024-08", "econ_occ": 61.79, "area_occ": 64.01, "occ_units": 32.0, "total_units": 48.0, "occ_price": 13590.5, "total_price": 21995.0}, {"month": "2024-09", "econ_occ": 60.77, "area_occ": 63.06, "occ_units": 31.0, "total_units": 48.0, "occ_price": 13365.5, "total_price": 21995.0}, {"month": "2024-10", "econ_occ": 68.97, "area_occ": 71.1, "occ_units": 35.0, "total_units": 48.0, "occ_price": 15170.5, "total_price": 21995.0}, {"month": "2024-11", "econ_occ": 63.88, "area_occ": 67.94, "occ_units": 34.0, "total_units": 48.0, "occ_price": 14050.5, "total_price": 21995.0}, {"month": "2024-12", "econ_occ": 62.86, "area_occ": 67.42, "occ_units": 34.0, "total_units": 48.0, "occ_price": 13825.0, "total_price": 21995.0}, {"month": "2025-01", "econ_occ": 59.71, "area_occ": 67.42, "occ_units": 34.0, "total_units": 48.0, "occ_price": 13850.0, "total_price": 23195.0}, {"month": "2025-02", "econ_occ": 56.48, "area_occ": 64.15, "occ_units": 32.0, "total_units": 48.0, "occ_price": 13100.0, "total_price": 23195.0}, {"month": "2025-03", "econ_occ": 51.8, "area_occ": 58.88, "occ_units": 30.0, "total_units": 48.0, "occ_price": 12015.0, "total_price": 23195.0}, {"month": "2025-04", "econ_occ": 56.69, "area_occ": 64.61, "occ_units": 32.0, "total_units": 48.0, "occ_price": 13150.0, "total_price": 23195.0}, {"month": "2025-05", "econ_occ": 50.64, "area_occ": 56.25, "occ_units": 28.0, "total_units": 48.0, "occ_price": 11745.0, "total_price": 23195.0}, {"month": "2025-06", "econ_occ": 57.84, "area_occ": 63.69, "occ_units": 31.0, "total_units": 48.0, "occ_price": 13415.0, "total_price": 23195.0}, {"month": "2025-07", "econ_occ": 54.69, "area_occ": 57.55, "occ_units": 29.0, "total_units": 48.0, "occ_price": 12685.0, "total_price": 23195.0}, {"month": "2025-08", "econ_occ": 59.28, "area_occ": 62.5, "occ_units": 32.0, "total_units": 48.0, "occ_price": 13750.0, "total_price": 23195.0}, {"month": "2025-09", "econ_occ": 61.87, "area_occ": 68.93, "occ_units": 35.0, "total_units": 48.0, "occ_price": 14350.0, "total_price": 23195.0}, {"month": "2025-10", "econ_occ": 65.06, "area_occ": 71.88, "occ_units": 36.0, "total_units": 48.0, "occ_price": 15090.0, "total_price": 23195.0}, {"month": "2025-11", "econ_occ": 63.87, "area_occ": 70.08, "occ_units": 35.0, "total_units": 48.0, "occ_price": 14815.0, "total_price": 23195.0}, {"month": "2025-12", "econ_occ": 61.93, "area_occ": 67.63, "occ_units": 34.0, "total_units": 48.0, "occ_price": 14365.0, "total_price": 23195.0}, {"month": "2026-01", "econ_occ": 64.22, "area_occ": 70.08, "occ_units": 35.0, "total_units": 48.0, "occ_price": 14895.0, "total_price": 23195.0}];
+const OT = [{"size": "14 x 30", "units": 9, "occupied": 7, "sqft": 3780.0, "occ_sqft": 2940.0, "price": 370.0, "avg_price": 357.93, "occ_pct": 77.78, "econ_occ": 75.24}, {"size": "12 x 40", "units": 1, "occupied": 1, "sqft": 480.0, "occ_sqft": 480.0, "price": 410.0, "avg_price": 190.0, "occ_pct": 100.0, "econ_occ": 46.34}, {"size": "17 x 30", "units": 7, "occupied": 6, "sqft": 3570.0, "occ_sqft": 3060.0, "price": 430.0, "avg_price": 401.58, "occ_pct": 85.71, "econ_occ": 80.05}, {"size": "14 x 40", "units": 15, "occupied": 11, "sqft": 8400.0, "occ_sqft": 6160.0, "price": 475.0, "avg_price": 412.73, "occ_pct": 73.33, "econ_occ": 63.72}, {"size": "14 x 50", "units": 9, "occupied": 4, "sqft": 6300.0, "occ_sqft": 2800.0, "price": 530.0, "avg_price": 515.0, "occ_pct": 44.44, "econ_occ": 43.19}, {"size": "17 x 50", "units": 7, "occupied": 4, "sqft": 5950.0, "occ_sqft": 3400.0, "price": 650.0, "avg_price": 572.5, "occ_pct": 57.14, "econ_occ": 50.33}];
+const ST = [{"type": "14 x 30", "rented": 6, "available": 2, "auction": 0, "reserved_mp": 0, "moving_out": 1, "unavailable": 0}, {"type": "12 x 40", "rented": 1, "available": 0, "auction": 0, "reserved_mp": 0, "moving_out": 0, "unavailable": 0}, {"type": "17 x 30", "rented": 6, "available": 1, "auction": 0, "reserved_mp": 0, "moving_out": 0, "unavailable": 0}, {"type": "14 x 40", "rented": 10, "available": 1, "auction": 1, "reserved_mp": 1, "moving_out": 0, "unavailable": 2}, {"type": "14 x 50", "rented": 4, "available": 5, "auction": 0, "reserved_mp": 0, "moving_out": 0, "unavailable": 0}, {"type": "17 x 50", "rented": 4, "available": 3, "auction": 0, "reserved_mp": 0, "moving_out": 0, "unavailable": 0}];
+const RM = [{"month": "2023-07", "total": 50.0, "txns": 1}, {"month": "2023-08", "total": 150.0, "txns": 3}, {"month": "2023-09", "total": 1743.83, "txns": 9}, {"month": "2023-10", "total": 6201.04, "txns": 17}, {"month": "2023-11", "total": 8082.35, "txns": 21}, {"month": "2023-12", "total": 9411.6, "txns": 24}, {"month": "2024-01", "total": 10611.41, "txns": 27}, {"month": "2024-02", "total": 10506.68, "txns": 30}, {"month": "2024-03", "total": 9397.2, "txns": 25}, {"month": "2024-04", "total": 10409.43, "txns": 27}, {"month": "2024-05", "total": 14421.66, "txns": 35}, {"month": "2024-06", "total": 12705.57, "txns": 35}, {"month": "2024-07", "total": 12363.24, "txns": 30}, {"month": "2024-08", "total": 17931.4, "txns": 27}, {"month": "2024-09", "total": 11256.46, "txns": 32}, {"month": "2024-10", "total": 16141.45, "txns": 40}, {"month": "2024-11", "total": 12348.07, "txns": 33}, {"month": "2024-12", "total": 11915.94, "txns": 30}, {"month": "2025-01", "total": 11885.02, "txns": 29}, {"month": "2025-02", "total": 12288.55, "txns": 28}, {"month": "2025-03", "total": 10451.62, "txns": 25}, {"month": "2025-04", "total": 14900.67, "txns": 33}, {"month": "2025-05", "total": 10136.0, "txns": 23}, {"month": "2025-06", "total": 12193.33, "txns": 29}, {"month": "2025-07", "total": 13603.02, "txns": 32}, {"month": "2025-08", "total": 11600.53, "txns": 28}, {"month": "2025-09", "total": 20196.77, "txns": 35}, {"month": "2025-10", "total": 14565.01, "txns": 34}, {"month": "2025-11", "total": 12518.5, "txns": 30}, {"month": "2025-12", "total": 14463.0, "txns": 33}, {"month": "2026-01", "total": 11658.0, "txns": 29}, {"month": "2026-02", "total": 12298.57, "txns": 29}];
+const RA = [{"action": "Rent", "total": 266056.51}, {"action": "Rent, Tenant Protection Fee", "total": 27007.5}, {"action": "Deposit, Prorated", "total": 23941.66}, {"action": "Late Fee, Rent", "total": 11637.5}, {"action": "Deposit, Rent ", "total": 5832.5}, {"action": "Deposit, Prorated, Rent", "total": 5557.41}, {"action": "Late Fee, Lien Fee, Rent, Tenant Protection Fee", "total": 3329.5}, {"action": "Deposit, Prorated, Prorated Tenant Protection Fee", "total": 2465.36}, {"action": "Rent, Deposit, Prorated", "total": 2430.0}, {"action": "Late Fee, Lien Fee, Rent", "total": 2105.0}, {"action": "Reservation", "total": 1850.0}, {"action": "Auction Fee, Late Fee, Lien Fee, Rent", "total": 1500.0}, {"action": "Late Fee, Rent, Tenant Protection Fee", "total": 1253.0}, {"action": "Deposit", "total": 956.82}, {"action": "Auction Fee, Late Fee, Rent", "total": 774.0}, {"action": "Deposit, Rent", "total": 475.0}, {"action": "Deposit, Late Fee, Prorated, Prorated Tenant Protection Fee, Rent, Tenant Protection Fee", "total": 400.57}, {"action": "Late Fee, Prorated", "total": 382.5}, {"action": "Prorated", "total": 351.83}, {"action": "Late Fee", "total": 99.26}];
+
+function initOverview() {
+    mk('c-occ-trend', {
+        type:'line',
+        data:{ labels:H.map(d=>d.month), datasets:[
+            { label:'Economic Occ', data:H.map(d=>d.econ_occ), borderColor:'#c9a96e', backgroundColor:'rgba(201,169,110,.1)', fill:true, borderWidth:2, tension:.3, pointRadius:2 },
+            { label:'Area Occ', data:H.map(d=>d.area_occ), borderColor:'#5b8fb9', borderWidth:2, tension:.3, pointRadius:2, borderDash:[5,5] }
+        ]},
+        options:{ responsive:true, maintainAspectRatio:false,
+            plugins:{ legend:{ display:true, position:'top', labels:{ usePointStyle:true, color:'#9a9590' } } },
+            scales:{ y:{ beginAtZero:true, max:100, grid:{color:'#333'}, ticks:{callback:v=>v+'%'} }, x:{grid:{display:false}} }
+        }
+    });
+    mk('c-occ-type', {
+        type:'bar',
+        data:{ labels:OT.map(d=>d.size), datasets:[
+            { label:'Physical', data:OT.map(d=>d.occ_pct), backgroundColor:'rgba(91,143,185,.7)', borderRadius:4, barPercentage:.4 },
+            { label:'Economic', data:OT.map(d=>d.econ_occ), backgroundColor:'rgba(201,169,110,.7)', borderRadius:4, barPercentage:.4 }
+        ]},
+        options:{ responsive:true, maintainAspectRatio:false,
+            plugins:{ legend:{ display:true, position:'top', labels:{ usePointStyle:true, color:'#9a9590' } } },
+            scales:{ y:{ beginAtZero:true, max:100, grid:{color:'#333'}, ticks:{callback:v=>v+'%'} }, x:{grid:{display:false}} }
+        }
+    });
+    mk('c-status', {
+        type:'bar',
+        data:{ labels:ST.map(d=>d.type), datasets:[
+            { label:'Rented', data:ST.map(d=>d.rented), backgroundColor:'rgba(107,171,115,.8)', borderRadius:2 },
+            { label:'Available', data:ST.map(d=>d.available), backgroundColor:'rgba(194,91,86,.8)', borderRadius:2 },
+            { label:'Other', data:ST.map(d=>d.auction+d.reserved_mp+d.moving_out+d.unavailable), backgroundColor:'rgba(201,169,110,.8)', borderRadius:2 }
+        ]},
+        options:{ responsive:true, maintainAspectRatio:false,
+            plugins:{ legend:{ display:true, position:'top', labels:{ usePointStyle:true, color:'#9a9590' } } },
+            scales:{ x:{ stacked:true, grid:{display:false} }, y:{ stacked:true, beginAtZero:true, grid:{color:'#333'} } }
+        }
+    });
+}
+
+function initOccupancy() {
+    mk('c-econ-area', {
+        type:'line',
+        data:{ labels:H.map(d=>d.month), datasets:[
+            { label:'Economic', data:H.map(d=>d.econ_occ), borderColor:'#c9a96e', borderWidth:2, tension:.3, pointRadius:2 },
+            { label:'Area', data:H.map(d=>d.area_occ), borderColor:'#5b8fb9', borderWidth:2, tension:.3, pointRadius:2 }
+        ]},
+        options:{ responsive:true, maintainAspectRatio:false,
+            plugins:{ legend:{ display:true, position:'top', labels:{ usePointStyle:true, color:'#9a9590' } } },
+            scales:{ y:{ beginAtZero:true, max:100, grid:{color:'#333'}, ticks:{callback:v=>v+'%'} }, x:{grid:{display:false}} }
+        }
+    });
+    mk('c-units-time', {
+        type:'line',
+        data:{ labels:H.map(d=>d.month), datasets:[
+            { label:'Occupied', data:H.map(d=>d.occ_units), borderColor:'#6bab73', backgroundColor:'rgba(107,171,115,.12)', fill:true, borderWidth:2, tension:.3, pointRadius:2 },
+            { label:'Total', data:H.map(d=>d.total_units), borderColor:'#c25b56', borderWidth:2, tension:0, pointRadius:0, borderDash:[5,5] }
+        ]},
+        options:{ responsive:true, maintainAspectRatio:false,
+            plugins:{ legend:{ display:true, position:'top', labels:{ usePointStyle:true, color:'#9a9590' } } },
+            scales:{ y:{ beginAtZero:true, grid:{color:'#333'} }, x:{grid:{display:false}} }
+        }
+    });
+}
+
+function initRevenue() {
+    mk('c-rev-trend', {
+        type:'line',
+        data:{ labels:RM.map(d=>d.month), datasets:[
+            { data:RM.map(d=>d.total), borderColor:'#c9a96e', backgroundColor:'rgba(201,169,110,.1)', fill:true, borderWidth:2, tension:.3, pointRadius:3 }
+        ]},
+        options:{ responsive:true, maintainAspectRatio:false,
+            scales:{ y:{ beginAtZero:true, grid:{color:'#333'}, ticks:{callback:v=>'$'+v.toLocaleString()} }, x:{grid:{display:false}} }
+        }
+    });
+    mk('c-rev-cat', {
+        type:'bar',
+        data:{ labels:RA.map(d=>d.action), datasets:[{
+            data:RA.map(d=>d.total),
+            backgroundColor:['#c9a96e','#5b8fb9','#c25b56','#6bab73','#9a9590','#d4a94e','#7a6f65','#5b8fb9'],
+            borderRadius:4, barPercentage:.5
+        }]},
+        options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+            scales:{ x:{ beginAtZero:true, grid:{color:'#333'}, ticks:{callback:v=>'$'+v.toLocaleString()} }, y:{grid:{display:false}} }
+        }
+    });
+}
+
+initOverview();
+</script>
+</body>
+</html>

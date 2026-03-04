@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blacktail Storages — Portfolio Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #1e1e1e; --card: #2a2a2a; --border: #333; --text: #e0e0e0; --muted: #999;
+    --blue: #5b8fb9; --gold: #c9a96e; --coral: #c25b56; --green: #6bab73; --purple: #9b7ed8;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif; background:var(--bg); color:var(--text); }
+
+  /* ── Top nav bar ─────────────────────────────────────────── */
+  .topbar {
+    background: #161616; border-bottom: 1px solid var(--border);
+    padding: 0 24px; display:flex; align-items:center; height:56px; gap:8px;
+    position:sticky; top:0; z-index:100;
+  }
+  .topbar .logo {
+    font-size:18px; font-weight:700; color:var(--gold); margin-right:32px;
+    white-space:nowrap;
+  }
+  .topbar .logo span { color:var(--text); font-weight:400; }
+  .nav-tabs { display:flex; gap:4px; overflow-x:auto; }
+  .nav-tab {
+    padding: 8px 18px; border-radius:6px; cursor:pointer;
+    font-size:13px; font-weight:500; color:var(--muted); white-space:nowrap;
+    transition: all .2s; border:1px solid transparent;
+  }
+  .nav-tab:hover { color:var(--text); background:rgba(255,255,255,.05); }
+  .nav-tab.active { color:#fff; background:var(--card); border-color:var(--border); }
+  .nav-tab .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; }
+
+  /* ── Tab content ─────────────────────────────────────────── */
+  .tab-content { display:none; }
+  .tab-content.active { display:block; }
+
+  /* ── Portfolio Overview ──────────────────────────────────── */
+  .overview { padding:24px; max-width:1400px; margin:0 auto; }
+  .section-title {
+    font-size:20px; font-weight:600; margin-bottom:16px; color:var(--text);
+    padding-bottom:8px; border-bottom:1px solid var(--border);
+  }
+  .kpi-grid {
+    display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap:12px; margin-bottom:24px;
+  }
+  .kpi-card {
+    background:var(--card); border:1px solid var(--border); border-radius:8px;
+    padding:16px; text-align:center;
+  }
+  .kpi-card .label { font-size:11px; text-transform:uppercase; color:var(--muted); letter-spacing:.5px; }
+  .kpi-card .value { font-size:28px; font-weight:700; margin:4px 0; }
+  .kpi-card .sub { font-size:12px; color:var(--muted); }
+
+  .chart-row { display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:24px; }
+  .chart-card {
+    background:var(--card); border:1px solid var(--border); border-radius:8px; padding:16px;
+  }
+  .chart-card h3 { font-size:14px; font-weight:600; margin-bottom:12px; color:var(--gold); }
+  .chart-card canvas { max-height:280px; }
+
+  /* ── Comparison table ────────────────────────────────────── */
+  .comp-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .comp-table th {
+    text-align:left; padding:10px 12px; background:#222; color:var(--gold);
+    font-weight:600; border-bottom:2px solid var(--border);
+  }
+  .comp-table td { padding:10px 12px; border-bottom:1px solid var(--border); }
+  .comp-table tr:hover td { background:rgba(255,255,255,.03); }
+  .comp-table .num { text-align:right; font-variant-numeric:tabular-nums; }
+  .comp-table .fac-dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:8px; }
+
+  /* ── Iframe container ────────────────────────────────────── */
+  .iframe-wrap {
+    width:100%; height:calc(100vh - 56px); border:none;
+  }
+  .iframe-wrap iframe { width:100%; height:100%; border:none; }
+
+  /* ── Responsive ──────────────────────────────────────────── */
+  @media (max-width:800px) {
+    .chart-row { grid-template-columns:1fr; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .topbar .logo { font-size:14px; margin-right:16px; }
+    .nav-tab { padding:6px 12px; font-size:12px; }
+  }
+
+  /* ── Insights cards ──────────────────────────────────────── */
+  .insights { display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:12px; margin-bottom:24px; }
+  .insight-card {
+    background:var(--card); border:1px solid var(--border); border-radius:8px;
+    padding:16px; border-left:3px solid var(--gold);
+  }
+  .insight-card h4 { font-size:13px; color:var(--gold); margin-bottom:6px; }
+  .insight-card p { font-size:12px; color:var(--muted); line-height:1.5; }
+  .insight-card .metric { font-size:20px; font-weight:700; color:var(--text); margin:4px 0; }
+
+  .report-header {
+    text-align:center; margin-bottom:24px; padding:16px;
+  }
+  .report-header h1 { font-size:26px; font-weight:700; color:var(--gold); }
+  .report-header p { font-size:13px; color:var(--muted); margin-top:4px; }
+</style>
+</head>
+<body>
+
+<!-- ── Top Navigation ──────────────────────────────────────── -->
+<div class="topbar">
+  <div class="logo">Blacktail <span>Storages</span></div>
+  <div class="nav-tabs">
+    <div class="nav-tab active" onclick="switchTab('overview')">Portfolio Overview</div>
+    <div class="nav-tab" onclick="switchTab('blacklabel')">
+      <span class="dot" style="background:#c9a96e"></span>Black Label
+    </div>
+    <div class="nav-tab" onclick="switchTab('bisoncentral')">
+      <span class="dot" style="background:#5b8fb9"></span>Bison Central
+    </div>
+    <div class="nav-tab" onclick="switchTab('bisonnorth')">
+      <span class="dot" style="background:#c25b56"></span>Bison North
+    </div>
+  </div>
+</div>
+
+<!-- ── Portfolio Overview Tab ──────────────────────────────── -->
+<div id="tab-overview" class="tab-content active">
+<div class="overview">
+  <div class="report-header">
+    <h1>Portfolio Overview</h1>
+    <p>Blacktail Storages — 3 Facilities | Report generated 2026-02-27</p>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="label">Total Units</div>
+      <div class="value">139</div>
+      <div class="sub">across 3 facilities</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">Occupied</div>
+      <div class="value" style="color:var(--green)">86</div>
+      <div class="sub">61.9% physical occupancy</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">Vacant</div>
+      <div class="value" style="color:var(--coral)">53</div>
+      <div class="sub">38.1% vacancy</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">Total SF</div>
+      <div class="value">42,580</div>
+      <div class="sub">portfolio footprint</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">Monthly Rent</div>
+      <div class="value" style="color:var(--green)">$20,596</div>
+      <div class="sub">$247,152/yr collected rate</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">Rack Rate</div>
+      <div class="value">$24,310</div>
+      <div class="sub">$291,720/yr at full price</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">Revenue Leakage</div>
+      <div class="value" style="color:var(--coral)">$3,714</div>
+      <div class="sub">$44,568/yr lost to discounts</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">Collections Due</div>
+      <div class="value" style="color:var(--coral)">$2,620</div>
+      <div class="sub">outstanding balances</div>
+    </div>
+  </div>
+
+  <!-- Insights -->
+  <div class="section-title">Key Insights</div>
+  <div class="insights">
+    <div class="insight-card">
+      <h4>Strongest Performer</h4>
+      <div class="metric">Black Label — 68.8%</div>
+      <p>Highest physical occupancy. Generates 68.0% of portfolio rent from 34.5% of units. Has a waiting list of 10 tenants.</p>
+    </div>
+    <div class="insight-card">
+      <h4>Largest Opportunity</h4>
+      <div class="metric">Bison Central — 29 vacant units</div>
+      <p>Accounts for 54.7% of total portfolio vacancy. Filling just 10 units at rack rate would add $980/mo in revenue.</p>
+    </div>
+    <div class="insight-card">
+      <h4>Watch List</h4>
+      <div class="metric">Bison North — 55.0% occupancy</div>
+      <p>Smallest facility at 20 units but lowest occupancy. $0 in collections suggests payment compliance, though 222 historically failed payments indicate underlying risk.</p>
+    </div>
+  </div>
+
+  <!-- Charts Row 1: Occupancy + Revenue comparison -->
+  <div class="chart-row">
+    <div class="chart-card">
+      <h3>Occupancy by Facility</h3>
+      <canvas id="chartOccComp"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Monthly Rent vs Rack Rate</h3>
+      <canvas id="chartRentComp"></canvas>
+    </div>
+  </div>
+
+  <!-- Charts Row 2: Portfolio trends -->
+  <div class="chart-row">
+    <div class="chart-card">
+      <h3>Occupancy Trend (12 Months)</h3>
+      <canvas id="chartOccTrend"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Revenue Trend (12 Months)</h3>
+      <canvas id="chartRevTrend"></canvas>
+    </div>
+  </div>
+
+  <!-- Charts Row 3: Unit distribution + Vacancy -->
+  <div class="chart-row">
+    <div class="chart-card">
+      <h3>Unit Distribution</h3>
+      <canvas id="chartUnitDist"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Revenue Leakage Breakdown</h3>
+      <canvas id="chartLeakage"></canvas>
+    </div>
+  </div>
+
+  <!-- Comparison Table -->
+  <div class="section-title" style="margin-top:8px;">Facility Comparison</div>
+  <div class="chart-card" style="overflow-x:auto;">
+    <table class="comp-table">
+      <thead>
+        <tr>
+          <th>Facility</th>
+          <th class="num">Units</th>
+          <th class="num">Occupied</th>
+          <th class="num">Vacant</th>
+          <th class="num">Occ %</th>
+          <th class="num">Total SF</th>
+          <th class="num">Monthly Rent</th>
+          <th class="num">Rack Rate</th>
+          <th class="num">Variance</th>
+          <th class="num">Collections</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="fac-dot" style="background:#c9a96e"></span>Black Label</td>
+          <td class="num">48</td>
+          <td class="num">33</td>
+          <td class="num">15</td>
+          <td class="num">68.8%</td>
+          <td class="num">28,480</td>
+          <td class="num">$13,995</td>
+          <td class="num">$15,525</td>
+          <td class="num" style="color:var(--coral)">$1,530</td>
+          <td class="num" style="color:var(--coral)">$1,675</td>
+        </tr>
+        <tr>
+          <td><span class="fac-dot" style="background:#5b8fb9"></span>Bison Central</td>
+          <td class="num">71</td>
+          <td class="num">42</td>
+          <td class="num">29</td>
+          <td class="num">59.2%</td>
+          <td class="num">9,600</td>
+          <td class="num">$5,086</td>
+          <td class="num">$6,960</td>
+          <td class="num" style="color:var(--coral)">$1,874</td>
+          <td class="num" style="color:var(--coral)">$945</td>
+        </tr>
+        <tr>
+          <td><span class="fac-dot" style="background:#c25b56"></span>Bison North</td>
+          <td class="num">20</td>
+          <td class="num">11</td>
+          <td class="num">9</td>
+          <td class="num">55.0%</td>
+          <td class="num">4,500</td>
+          <td class="num">$1,515</td>
+          <td class="num">$1,825</td>
+          <td class="num" style="color:var(--coral)">$310</td>
+          <td class="num" style="color:var(--green)">$0</td>
+        </tr>
+        <tr style="font-weight:700; border-top:2px solid var(--gold);">
+          <td>Portfolio Total</td>
+          <td class="num">139</td>
+          <td class="num">86</td>
+          <td class="num">53</td>
+          <td class="num">61.9%</td>
+          <td class="num">42,580</td>
+          <td class="num">$20,596</td>
+          <td class="num">$24,310</td>
+          <td class="num" style="color:var(--coral)">$3,714</td>
+          <td class="num" style="color:var(--coral)">$2,620</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div style="text-align:center; padding:24px; color:var(--muted); font-size:11px;">
+    Blacktail Storages Portfolio Dashboard — Prepared by Alter Ego | Data as of 2026-02-27
+  </div>
+</div>
+</div>
+
+<!-- ── Facility Iframe Tabs ────────────────────────────────── -->
+<div id="tab-blacklabel" class="tab-content">
+  <div class="iframe-wrap"><iframe id="iframe-bl" data-src="/black-label.html" allowfullscreen></iframe></div>
+</div>
+<div id="tab-bisoncentral" class="tab-content">
+  <div class="iframe-wrap"><iframe id="iframe-bc" data-src="/bison-central.html" allowfullscreen></iframe></div>
+</div>
+<div id="tab-bisonnorth" class="tab-content">
+  <div class="iframe-wrap"><iframe id="iframe-bn" data-src="/bison-north.html" allowfullscreen></iframe></div>
+</div>
+
+<script>
+// ── Tab switching ───────────────────────────────────────────
+const tabMap = {
+  'overview': 'tab-overview',
+  'blacklabel': 'tab-blacklabel',
+  'bisoncentral': 'tab-bisoncentral',
+  'bisonnorth': 'tab-bisonnorth'
+};
+
+function switchTab(key) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(tabMap[key]).classList.add('active');
+  // Activate nav button
+  const tabs = document.querySelectorAll('.nav-tab');
+  const keys = Object.keys(tabMap);
+  keys.forEach((k, i) => { if (k === key) tabs[i].classList.add('active'); });
+  // Lazy-load iframes
+  const iframes = document.querySelectorAll('iframe[data-src]');
+  iframes.forEach(iframe => {
+    if (iframe.closest('.tab-content.active') && !iframe.src) {
+      iframe.src = iframe.getAttribute('data-src');
+    }
+  });
+  // Rebuild charts if overview
+  if (key === 'overview') buildCharts();
+}
+
+// ── Chart.js defaults ───────────────────────────────────────
+Chart.defaults.color = '#999';
+Chart.defaults.borderColor = '#333';
+Chart.defaults.font.family = "'Segoe UI','Helvetica Neue',Arial,sans-serif";
+
+const charts = {};
+function destroy(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+function buildCharts() {
+  const facNames = ["Black Label", "Bison Central", "Bison North"];
+  const facColors = ["#c9a96e", "#5b8fb9", "#c25b56"];
+  const facOccPct = [68.8, 59.2, 55.0];
+  const facOcc = [33, 42, 11];
+  const facVacant = [15, 29, 9];
+  const facRent = [13995.0, 5086.0, 1515.0];
+  const facRack = [15525.0, 6960.0, 1825.0];
+  const facVariance = [1530.0, 1874.0, 310.0];
+  const facUnits = [48, 71, 20];
+  const facSqft = [28480.0, 9600, 4500];
+
+  // Occupancy comparison bar
+  destroy('chartOccComp');
+  charts.chartOccComp = new Chart(document.getElementById('chartOccComp'), {
+    type: 'bar',
+    data: {
+      labels: facNames,
+      datasets: [
+        { label: 'Occupied', data: facOcc, backgroundColor: facColors.map(c => c + 'cc'), borderRadius: 4 },
+        { label: 'Vacant', data: facVacant, backgroundColor: '#444', borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 12 } },
+        tooltip: {
+          callbacks: {
+            afterLabel: (ctx) => {
+              if (ctx.datasetIndex === 0) return facOccPct[ctx.dataIndex] + '% occupancy';
+              return '';
+            }
+          }
+        }
+      },
+      scales: {
+        x: { stacked: true, grid: { display: false } },
+        y: { stacked: true, title: { display: true, text: 'Units' } }
+      }
+    }
+  });
+
+  // Rent vs Rack rate
+  destroy('chartRentComp');
+  charts.chartRentComp = new Chart(document.getElementById('chartRentComp'), {
+    type: 'bar',
+    data: {
+      labels: facNames,
+      datasets: [
+        { label: 'Monthly Rent', data: facRent, backgroundColor: '#6bab73cc', borderRadius: 4 },
+        { label: 'Rack Rate', data: facRack, backgroundColor: '#5b8fb966', borderRadius: 4 },
+        { label: 'Variance', data: facVariance, backgroundColor: '#c25b56cc', borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 12 } },
+        tooltip: { callbacks: { label: (ctx) => ctx.dataset.label + ': $' + ctx.raw.toLocaleString() } }
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: { title: { display: true, text: '$' }, ticks: { callback: v => '$' + v.toLocaleString() } }
+      }
+    }
+  });
+
+  // Occupancy trend
+  const occLabels = ["25/02", "25/03", "25/04", "25/05", "25/06", "25/07", "25/08", "25/09", "25/10", "25/11", "25/12", "26/01"];
+  destroy('chartOccTrend');
+  charts.chartOccTrend = new Chart(document.getElementById('chartOccTrend'), {
+    type: 'line',
+    data: {
+      labels: occLabels,
+      datasets: [
+        { label: 'Portfolio', data: [66.2, 63.2, 66.2, 60.3, 64.7, 60.3, 61.8, 69.1, 72.1, 69.1, 67.6, 66.2], borderColor: '#fff', backgroundColor: 'rgba(255,255,255,.1)', borderWidth: 2.5, fill: true, tension: .3, pointRadius: 0 },
+        { label: 'Black Label', data: [64.15, 58.88, 64.61, 56.25, 63.69, 57.55, 62.5, 68.93, 71.88, 70.08, 67.63, 70.08], borderColor: '#c9a96e', borderWidth: 1.5, tension: .3, pointRadius: 0, borderDash: [4,4] },
+        { label: 'Bison Central', data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 80.73], borderColor: '#5b8fb9', borderWidth: 1.5, tension: .3, pointRadius: 0, borderDash: [4,4] },
+        { label: 'Bison North', data: [64.44, 64.44, 64.44, 64.44, 64.44, 58.89, 48.89, 58.89, 64.44, 60.0, 60.0, 60.0], borderColor: '#c25b56', borderWidth: 1.5, tension: .3, pointRadius: 0, borderDash: [4,4] }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 12 } },
+        tooltip: { callbacks: { label: (ctx) => ctx.dataset.label + ': ' + ctx.raw + '%' } }
+      },
+      scales: {
+        y: { min: 0, max: 100, ticks: { callback: v => v + '%' }, title: { display: true, text: 'Area Occupancy' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  // Revenue trend
+  const revLabels = ["25/03", "25/04", "25/05", "25/06", "25/07", "25/08", "25/09", "25/10", "25/11", "25/12", "26/01", "26/02"];
+  destroy('chartRevTrend');
+  charts.chartRevTrend = new Chart(document.getElementById('chartRevTrend'), {
+    type: 'line',
+    data: {
+      labels: revLabels,
+      datasets: [
+        { label: 'Portfolio Total', data: [17534.62, 21655.05, 17603.45, 19342.73, 20613.76, 18990.34, 26446.1, 21309.62, 19268.83, 20845.0, 18310.0, 18491.57], borderColor: '#fff', backgroundColor: 'rgba(255,255,255,.08)', borderWidth: 2.5, fill: true, tension: .3, pointRadius: 0 },
+        { label: 'Black Label', data: [10451.62, 14900.67, 10136.0, 12193.33, 13603.02, 11600.53, 20196.77, 14565.01, 12518.5, 14463.0, 11658.0, 12298.57], borderColor: '#c9a96e', borderWidth: 1.5, tension: .3, pointRadius: 0 },
+        { label: 'Bison Central', data: [5114.0, 5275.38, 5758.45, 5345.4, 5706.74, 6060.81, 4858.0, 4914.29, 5496.33, 4828.0, 5068.0, 4599.0], borderColor: '#5b8fb9', borderWidth: 1.5, tension: .3, pointRadius: 0 },
+        { label: 'Bison North', data: [1969.0, 1479.0, 1709.0, 1804.0, 1304.0, 1329.0, 1391.33, 1830.32, 1254.0, 1554.0, 1584.0, 1594.0], borderColor: '#c25b56', borderWidth: 1.5, tension: .3, pointRadius: 0 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 12 } },
+        tooltip: { callbacks: { label: (ctx) => ctx.dataset.label + ': $' + ctx.raw.toLocaleString() } }
+      },
+      scales: {
+        y: { ticks: { callback: v => '$' + (v/1000).toFixed(0) + 'k' }, title: { display: true, text: 'Revenue' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  // Unit distribution (horizontal bar)
+  destroy('chartUnitDist');
+  charts.chartUnitDist = new Chart(document.getElementById('chartUnitDist'), {
+    type: 'bar',
+    data: {
+      labels: facNames,
+      datasets: [{ label: 'Units', data: facUnits, backgroundColor: facColors.map(c => c + 'cc'), borderRadius: 4 }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            afterLabel: (ctx) => facSqft[ctx.dataIndex].toLocaleString() + ' SF'
+          }
+        }
+      },
+      scales: {
+        x: { title: { display: true, text: 'Total Units' }, grid: { display: false } },
+        y: { grid: { display: false } }
+      }
+    }
+  });
+
+  // Revenue leakage (horizontal bar)
+  destroy('chartLeakage');
+  charts.chartLeakage = new Chart(document.getElementById('chartLeakage'), {
+    type: 'bar',
+    data: {
+      labels: facNames,
+      datasets: [
+        { label: 'Discount Leakage', data: facVariance, backgroundColor: '#c25b56cc', borderRadius: 4 },
+        { label: 'Collections Due', data: [1675.0, 945.0, 0], backgroundColor: '#c9a96ecc', borderRadius: 4 }
+      ]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 12 } },
+        tooltip: { callbacks: { label: (ctx) => ctx.dataset.label + ': $' + ctx.raw.toLocaleString() } }
+      },
+      scales: {
+        x: { stacked: true, ticks: { callback: v => '$' + v.toLocaleString() }, grid: { display: false } },
+        y: { stacked: true, grid: { display: false } }
+      }
+    }
+  });
+}
+
+// Build charts on load
+buildCharts();
+</script>
+</body>
+</html>
