@@ -92,7 +92,8 @@ footer { text-align:center; padding:20px; color:var(--muted); font-size:11px; ma
     <button class="tab" onclick="showTab('occupancy')">Occupancy</button>
     <button class="tab" onclick="showTab('revenue')">Revenue & Rent Roll</button>
     <button class="tab" onclick="showTab('risk')">Collections & Risk</button>
-    <button class="tab" onclick="showTab('insights')">Key Insights</button>
+    <!-- HIDDEN: Key Insights tab - content preserved below -->
+    <!-- <button class="tab" onclick="showTab('insights')">Key Insights</button> -->
 </div>
 
 <!-- ============ OVERVIEW ============ -->
@@ -268,8 +269,8 @@ footer { text-align:center; padding:20px; color:var(--muted); font-size:11px; ma
 </tbody></table></div>
 </div>
 
-<!-- ============ KEY INSIGHTS ============ -->
-<div id="tab-insights" class="tab-content">
+<!-- ============ KEY INSIGHTS (HIDDEN — content preserved, not deleted) ============ -->
+<div id="tab-insights" class="tab-content" style="display:none!important">
 
 <div class="insight-card">
 <h2>Portfolio-Level Findings</h2>
